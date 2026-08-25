@@ -8,10 +8,13 @@ import {
   updateApiToolProvider,
   validateOpenAPISchema,
 } from '@/services/api-tool'
+import {
+ type CreateApiToolProviderRequest,
+} from '@/models/api-tools'
 import { typeMap } from '@/config'
 import { useRoute } from 'vue-router'
 import moment from 'moment/moment'
-import { Message, Modal } from '@arco-design/web-vue'
+import { Message, Modal, Form, type ValidatedError } from '@arco-design/web-vue'
 import {formatJsonString} from '@/utils/jsonFormat'
 
 const providers = reactive<Array<any>>([])
@@ -23,7 +26,7 @@ const props = defineProps({
   },
 })
 
-const formRef = ref(null)
+const formRef = ref<InstanceType<typeof Form>>()
 const emits = defineEmits(['update-create-type'])
 
 
@@ -41,7 +44,7 @@ const form = reactive({
   name: '',
   description: '',
   openapi_schema: '',
-  headers: [],
+  headers: [] as {key: string; value: string}[],
 })
 const loading = ref<boolean>(false)
 const showIdx = ref<number>(-1)
@@ -84,7 +87,7 @@ const tools = computed(() => {
 })
 
 // deal with pagination data when scroll the windows
-const handleScroll = (event: UIEvent) => {
+const handleScroll = (event: Event) => {
   // 1. Get the scrollTop, scrollHeight, clientHeight value with UIEvent
   const { scrollTop, scrollHeight, clientHeight } = event.target as HTMLElement
 
@@ -100,7 +103,7 @@ const handleScroll = (event: UIEvent) => {
 // cancel the Modal window
 const handleCancel = () => {
   // 1.Reset the form data
-  formRef.value.resetFields()
+  formRef.value?.resetFields()
 
   // 2. hide the Modal window
   emits('update-create-type', '')
@@ -108,7 +111,10 @@ const handleCancel = () => {
 }
 
 // Submit Modal Window Processor
-const handleSubmit = async ({ values, errors }) => {
+const handleSubmit = async ({ values, errors }:{
+  values: Record<string, any>
+  errors: Record<string, ValidatedError> | undefined
+}) => {
   // 1.Terminate immediately if any errors exist
   if (errors) return
 
@@ -119,11 +125,11 @@ const handleSubmit = async ({ values, errors }) => {
     // 3.Initiate different requests according to different types
     if (props.createType === 'tool') {
       // 4.Call the interface to initiate a creation request
-      const resp = await createApiToolProvider(values)
+      const resp = await createApiToolProvider(values as CreateApiToolProviderRequest)
       Message.success(resp.message)
     } else if (showUpdateModal.value) {
       // 5.Call the interface to initiate an update API tool request
-      const resp = await updateApiToolProvider(providers[showIdx.value]['id'], values)
+      const resp = await updateApiToolProvider(providers[showIdx.value]['id'], values as CreateApiToolProviderRequest)
       Message.success(resp.message)
     }
 
@@ -150,9 +156,9 @@ const handleUpdate = async () => {
     const data = resp.data
 
     // 3.Update form data
-    formRef.value.resetFields()
+    formRef.value?.resetFields()
     form.description = data.description
-    form.icon = 'https://picsum.photos/400'
+    form.icon = data.icon
     form.name = data.name
     form.openapi_schema = formatJsonString(data.openapi_schema)
     form.headers = data.headers
@@ -209,7 +215,7 @@ const loadMoreData =async (init: boolean=false)=>{
     paginator.total_page = data.paginator.total_page
     paginator.total_record = data.paginator.total_record
     //5. set the current_page if there is more data
-    if(paginator.current_page <paginator.total_page){
+    if(paginator.current_page <= paginator.total_page){
       paginator.current_page += 1
     }
     // 6. judge override or append data
@@ -303,7 +309,7 @@ watch(
           </a-col>
         </a-row>
         <!--  loader  -->
-        <a-row v-if="providers.length>0">
+        <a-row v-if="paginator.total_page >= 2">
           <!-- loading -->
           <a-col v-if="paginator.current_page<=paginator.total_page" :span="24"  class="text-center" >
             <a-space class="my-4 items-center">

@@ -1,4 +1,4 @@
-import { type BasePaginatorResponse } from '@/models/base'
+import { type BasePaginatorResponse,type BaseResponse } from '@/models/base'
 //Get self-defined api plugin response
 export  type GetApiToolProviderWithPageResponse = BasePaginatorResponse<{
   id:string
@@ -29,11 +29,13 @@ export type UpdateApiToolProviderRequest = {
 }
 
 // Get self-defined api provider Response
-export type GetApiToolProviderResponse = {
+export type GetApiToolProviderResponse = BaseResponse<{
   id: string
   name: string
+  icon: string
   description: string
   openapi_schema: string
   headers: Array<any>
   created_at: number
 }
+>

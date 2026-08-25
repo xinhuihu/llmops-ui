@@ -1,11 +1,11 @@
-// 基础响应数据格式
+// Basic response data format
 export type BaseResponse<T> = {
   code: string
   message: string
   data: T
 }
 
-// 基础分页响应数据格式
+// Basic paginated response data format
 export type BasePaginatorResponse<T> = BaseResponse<{
   list: Array<T>
   paginator: {

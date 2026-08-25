@@ -71,13 +71,14 @@ watch(
           v-if="route.path.startsWith('/space/datasets')"
           type="primary"
           class="rounded-lg"
+          @click="createType = 'dataset'"
         >
           Create dataset
         </a-button>
       </div>
-      <!-- 导航按钮+搜索框 -->
+      <!-- Navigation Buttons + Search Box -->
       <div class="flex items-center justify-between mb-6">
-        <!-- 左侧导航 -->
+        <!-- Left‑side navigation -->
         <div class="flex items-center gap-2">
           <router-link
             to="/space/apps"
@@ -98,17 +99,17 @@ watch(
             class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
             active-class="bg-gray-100"
           >
-            workflows
+            Workflows
           </router-link>
           <router-link
             to="/space/datasets"
             class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
             active-class="bg-gray-100"
           >
-            datasets
+            Knowledge Base
           </router-link>
         </div>
-        <!-- 右侧搜索 -->
+        <!-- Search on the right -->
         <a-input-search
           v-model="searchWord"
           placeholder="please input the key word"
