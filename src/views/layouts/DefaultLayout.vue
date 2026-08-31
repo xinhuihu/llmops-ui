@@ -32,7 +32,7 @@ const route = useRoute();
             <template #icon>
               <PlusOutlined />
             </template>
-            Create AI App
+            Create Agent
           </a-button>
           <!-- sidebar Nav -->
           <div class="flex flex-col gap-2">
@@ -62,7 +62,7 @@ const route = useRoute();
             >
               <icon-app-full v-if="route.path.startsWith('/store/apps')" />
               <icon-app v-else />
-              App Plaza
+              Agent
             </router-link>
             <router-link
               to="/store/tools"

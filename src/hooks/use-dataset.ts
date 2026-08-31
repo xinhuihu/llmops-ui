@@ -1,4 +1,4 @@
-import { onMounted, reactive, ref, watch } from 'vue'
+import { onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   createDataset,
@@ -7,10 +7,25 @@ import {
   getDataset,
   getDatasetsWithPage,
   getDocumentsWithPage,
+  getDocument,
   updateDataset,
   updateDocumentEnabled,
+  getSegmentsWithPage,
+  updateSegmentEnabled,
+  deleteSegment,
+  createSegment,
+  updateSegment,
+  getSegment,
 } from '@/services/datasets'
+import type {
+  CreateDocumentsRequest,
+  CreateSegmentRequest,
+  GetDocumentsWithPageRequest,
+  HitRequest,
+  UpdateSegmentRequest,
+} from '@/models/datasets'
 import { getTaskStatus } from '@/services/task'
+import type { TaskProgressItem } from '@/models/task'
 import { Form, Message, Modal } from '@arco-design/web-vue'
 
 export const useGetDatasetsWithPage = () => {
@@ -94,35 +109,81 @@ export const useGetDatasetsWithPage = () => {
   return { loading, datasets, paginator, loadDatasets }
 }
 
-// Poll the async task status until it reaches a terminal state
-const pollTask = (task_id: string) => {
-  return new Promise<void>((resolve, reject) => {
-    let attempts = 0
-    const maxAttempts = 100 // 100 * 3s = 300s timeout
-    const timer = setInterval(async () => {
-      attempts++
-      try {
-        const resp = await getTaskStatus(task_id)
-        const status = resp.data.status
-        if (status === 'success') {
-          clearInterval(timer)
-          resolve()
-        } else if (status === 'failed') {
-          clearInterval(timer)
-          reject(new Error(resp.data.error || 'Delete task failed'))
-        } else if (attempts >= maxAttempts) {
-          clearInterval(timer)
-          reject(new Error('Delete task timed out, please refresh later'))
-        }
-      } catch (e) {
-        clearInterval(timer)
-        reject(e)
-      }
-    }, 3000)
-  })
+// Number of logical steps the backend reports while deleting a dataset
+export const DELETE_DATASET_STEP_TOTAL = 8
+
+// In-flight deletion state for a single dataset card
+export type DeletingTask = {
+  task_id: string
+  status: string
+  progress: Array<TaskProgressItem>
+  error: string
 }
 
 export const useDeleteDataset = () => {
+  const deletingTasks = reactive<Record<string, DeletingTask>>({})
+  const timers: Array<ReturnType<typeof setInterval>> = []
+
+  // Poll the async task status, updating the card state in real time until a terminal state
+  const pollAndUpdate = (dataset_id: string, task_id: string) => {
+    return new Promise<void>((resolve, reject) => {
+      let attempts = 0
+      const maxAttempts = 100 // 100 * 3s = 300s timeout
+      const timer = setInterval(async () => {
+        attempts++
+        try {
+          const resp = await getTaskStatus(task_id)
+          const data = resp.data
+          if (deletingTasks[dataset_id]) {
+            deletingTasks[dataset_id].status = data.status
+            deletingTasks[dataset_id].progress = data.progress ?? []
+            deletingTasks[dataset_id].error = data.error ?? ''
+          }
+          if (data.status === 'success') {
+            clearInterval(timer)
+            resolve()
+          } else if (data.status === 'failed') {
+            clearInterval(timer)
+            reject(new Error(data.error || 'Delete task failed'))
+          } else if (attempts >= maxAttempts) {
+            clearInterval(timer)
+            reject(new Error('Delete task timed out, please refresh later'))
+          }
+        } catch (e) {
+          clearInterval(timer)
+          reject(e)
+        }
+      }, 3000)
+      timers.push(timer)
+    })
+  }
+
+  // Start (or restart) the delete flow for one dataset, tracking it in `deletingTasks`
+  const runDelete = async (dataset_id: string, callback?: () => void) => {
+    try {
+      // Send a request to the API interface, getting back a task_id to poll
+      const resp = await deleteDataset(dataset_id)
+      deletingTasks[dataset_id] = {
+        task_id: resp.data.task_id,
+        status: 'pending',
+        progress: [],
+        error: '',
+      }
+      Message.success(String(resp.data.message))
+      await pollAndUpdate(dataset_id, resp.data.task_id)
+      Message.success('Dataset deleted successfully')
+      delete deletingTasks[dataset_id]
+      callback && callback()
+    } catch (e) {
+      const message = (e as Error)?.message || 'Delete failed'
+      if (deletingTasks[dataset_id]) {
+        deletingTasks[dataset_id].status = 'failed'
+        deletingTasks[dataset_id].error = message
+      }
+      Message.error(message)
+    }
+  }
+
   const handleDelete = (dataset_id: string, callback?: () => void) => {
     const isEn = true // You can replace this with your own logic to determine the language
     Modal.warning({
@@ -132,25 +193,25 @@ export const useDeleteDataset = () => {
       hideCancel: false,
       okText: isEn ? 'Confirm' : '确定',
       cancelText: isEn ? 'Cancel' : '取消',
-      onOk: async () => {
-        try {
-          // Send a request to the API interface after clicking OK
-          const resp = await deleteDataset(dataset_id)
-          // Poll the async task status until it reaches a terminal state
-          Message.success(String(resp.data.message))
-          await pollTask(resp.data.task_id)
-          Message.success('Dataset deleted successfully')
-        } catch (e) {
-          Message.error((e as Error)?.message || 'Delete failed')
-        } finally {
-          // Invoke the callback function to specify the callback functionality
-          callback && callback()
-        }
+      onOk: () => {
+        // Close the dialog immediately; progress is shown on the card overlay
+        runDelete(dataset_id, callback)
       },
     })
   }
 
-  return { handleDelete }
+  // Re-submit the delete without showing the confirmation dialog again
+  const retryDelete = (dataset_id: string, callback?: () => void) => {
+    runDelete(dataset_id, callback)
+  }
+
+  // Clear all pending poll timers when the owning component unmounts
+  onUnmounted(() => {
+    timers.forEach((timer) => clearInterval(timer))
+    timers.splice(0, timers.length)
+  })
+
+  return { handleDelete, retryDelete, deletingTasks }
 }
 
 export const useCreateOrUpdateDataset = () => {
@@ -335,3 +396,196 @@ export const useUpdateDocumentEnabled = () => {
 
   return { handleUpdate }
 }
+
+export const useGetDocument = () => {
+  // 1.Define the basic data required for hooks
+  const loading = ref(false)
+  const document = ref<Record<string, any>>({})
+
+  // 2.Define the document‑loading function
+  const loadDocument = async (dataset_id: string, document_id: string) => {
+    try {
+      loading.value = true
+      const resp = await getDocument(dataset_id, document_id)
+      document.value = resp.data
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, document, loadDocument }
+}
+
+export const useGetSegmentsWithPage = () => {
+  // 1.Define the data required for hooks
+  const loading = ref(false)
+  const segments = ref<Record<string, any>>([])
+  const defaultPaginator = {
+    current_page: 1,
+    page_size: 20,
+    total_page: 0,
+    total_record: 0,
+  }
+  const paginator = ref(defaultPaginator)
+
+  // 2.Define the data‑loading function
+  const loadSegments = async (
+    dataset_id: string,
+    document_id: string,
+    init: boolean = false,
+    search_word: string = '',
+  ) => {
+    // 2.1 Determine whether it is an initialization. If so, initialize the pager first.
+    if (init) {
+      paginator.value = defaultPaginator
+    } else if (paginator.value.current_page > paginator.value.total_page) {
+      return
+    }
+
+    // 2.2 Load data and update
+    try {
+      // 2.3 Call the interface to obtain response data
+      loading.value = true
+      const resp = await getSegmentsWithPage(dataset_id, document_id, {
+        current_page: paginator.value.current_page,
+        page_size: paginator.value.page_size,
+        search_word: search_word,
+      })
+      const data = resp.data
+
+      // 2.4 Update the pager
+      paginator.value = data.paginator
+
+      // 2.5 Determine whether more data exists
+      if (paginator.value.current_page <= paginator.value.total_page) {
+        paginator.value.current_page += 1
+      }
+
+      // 2.6 Append or overwrite data
+      if (init) {
+        segments.value = data.list
+      } else {
+        segments.value.push(...data.list)
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, segments, paginator, loadSegments }
+}
+
+export const useUpdateSegmentEnabled = () => {
+  const handleUpdate = async (
+    dataset_id: string,
+    document_id: string,
+    segment_id: string,
+    enabled: boolean,
+    callback?: () => void,
+  ) => {
+    try {
+      const resp = await updateSegmentEnabled(dataset_id, document_id, segment_id, enabled)
+      Message.success(resp.message)
+    } finally {
+      // 2.Execute the specified callback function
+      callback && callback()
+    }
+  }
+
+  return { handleUpdate }
+}
+
+export const useDeleteSegment=()=>{
+  const handleDelete = async (
+    dataset_id: string,
+    document_id: string,
+    segment_id: string,
+    callback?: () => void,
+  ) => {
+    Modal.warning({
+      title: 'Are you sure to delete this document segment?',
+      content:
+        'After deletion, the document cannot be retrieved from the knowledge base/vector database. ' +
+        'Use the disable function to temporarily turn off retrieval.',
+      hideCancel: false,
+      onOk: async () => {
+        try {
+          // 1.Send a request to the API interface after clicking OK
+          const resp = await deleteSegment(dataset_id, document_id, segment_id)
+          Message.success(resp.message)
+        } finally {
+          // 2 Execute the specified callback function
+          callback && callback()
+        }
+      },
+    })
+  }
+
+  return { handleDelete }
+}
+
+export const useCreateSegment = () => {
+  // 1.定义hooks所需数据
+  const loading = ref(false)
+
+  // 2.定义新增片段处理器
+  const handleCreateSegment = async (
+    dataset_id: string,
+    document_id: string,
+    req: CreateSegmentRequest,
+  ) => {
+    try {
+      loading.value = true
+      const resp = await createSegment(dataset_id, document_id, req)
+      Message.success(resp.message)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, handleCreateSegment }
+}
+
+export const useUpdateSegment = () => {
+  // 1.Define the data required for hooks
+  const loading = ref(false)
+
+  // 2.Define the update fragment processor
+  const handleUpdateSegment = async (
+    dataset_id: string,
+    document_id: string,
+    segment_id: string,
+    req: UpdateSegmentRequest,
+  ) => {
+    try {
+      loading.value = true
+      const resp = await updateSegment(dataset_id, document_id, segment_id, req)
+      Message.success(resp.message)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, handleUpdateSegment }
+}
+
+export const useGetSegment = ()=>{
+  // 1.Define the data required for hooks
+  const loading = ref(false)
+  const segment = ref<Record<string, any>>({})
+
+  // 2.Define the data loader processor
+  const loadSegment = async (dataset_id: string, document_id: string, segment_id: string) => {
+    try {
+      loading.value = true
+      const resp = await getSegment(dataset_id, document_id, segment_id)
+      segment.value = resp.data
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, segment, loadSegment }
+}
+
+

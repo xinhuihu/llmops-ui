@@ -1,6 +1,13 @@
 // Async task status enumeration
 export type TaskStatus = 'pending' | 'running' | 'success' | 'failed'
 
+// A single completed step recorded in the task's progress list
+export type TaskProgressItem = {
+  key: string
+  label: string
+  done_at: number
+}
+
 // Async task entity
 export type Task = {
   id: string
@@ -11,6 +18,7 @@ export type Task = {
   account_id: string | null
   status: TaskStatus
   error: string
+  progress: Array<TaskProgressItem>
   updated_at: number
   created_at: number
 }

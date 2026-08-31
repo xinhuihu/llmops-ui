@@ -6,7 +6,7 @@ import type { CreateDocumentsRequest } from '@/models/datasets'
 import { type Form, Message } from '@arco-design/web-vue'
 import { unescapeString } from '@/utils/helper'
 
-// 1.定义组件接收的数据与事件
+// 1.Define the data and events received by the component
 const props = defineProps({
   visible: { type: Boolean, required: true },
   dataset_id: { type: String, required: true },
@@ -18,14 +18,14 @@ const props = defineProps({
 })
 const emits = defineEmits(['update:visible'])
 
-// 2.定义向导相关数据：定时器、批处理标识、当前步骤、表单、接口加载状态
-let timer: ReturnType<typeof setInterval> | null = null // 定时器，默认为空
-let batch = '' // 批处理标识
+// 2.Define wizard‑related data: timer, batch processing identifier, current step, form, interface loading status
+let timer: ReturnType<typeof setInterval> | null = null // Timer, empty by default
+let batch = '' // Batch ID
 let fetchCount = 0
 const currentStep = ref(1)
 const createDocumentsForm = reactive({
-  file_list: [] as any[], // 上传文件列表
-  process_type: 'automatic', // 处理类型
+  file_list: [] as any[], // Upload File List
+  process_type: 'automatic', // Processing Type
   rule: {
     separators: ['\\n'],
     chunk_size: 500,
@@ -38,63 +38,71 @@ const createDocumentsLoading = ref(false)
 const submitted = ref(false)
 const documents = reactive<Array<any>>([])
 
-// 3.关闭弹窗
+// 3.Close pop‑up window
 const hideModal = () => emits('update:visible', false)
 
-// 4.定义下一步处理函数
+// 4.Define the next‑step processing function
 const nextStep = async () => {
-  // 4.1 判断当前所处的步骤并执行不同的检查
+  // 4.1 Determine the current step and perform different checks
   if (currentStep.value === 1) {
-    // 4.2 检查是否已经上传了文件，如果没上传则不允许点击下一步并提示
+    // 4.2 Check whether the file has been uploaded. If not, disable the Next button and display a prompt.
     if (createDocumentsForm.file_list.length === 0) {
       Message.error('Please upload the files to be processed.')
       return
     }
-    // 4.3 检查文件是否上传完毕
-    const isUploaded = createDocumentsForm.file_list.every(
-      (fileItem) => fileItem.response?.data?.id,
-    )
-    if (!isUploaded) {
-      Message.warning('The file is being uploaded. Please wait a moment.')
+    // Identify the unready files to easily distinguish between uploading and upload‑failed statuses.
+    const unReadyFiles = createDocumentsForm.file_list.filter((fileItem) => {
+      const id = fileItem.response?.data?.id
+      // An ID that is null/undefined or an empty string shall be regarded as invalid.
+      return id == null || id === ''
+    })
+
+    if(unReadyFiles.length > 0) {
+      // Determine whether there is absolutely no response (uploading) or a response exists but with no valid id (upload failed)
+      const hasFailed = unReadyFiles.some(f => f.response !== undefined)
+      if(hasFailed) {
+        Message.error('Some files failed to upload, please re‑upload failed files.')
+      } else {
+        Message.warning('The file is being uploaded. Please wait a moment.')
+      }
       return
     }
-
-    // 4.4 进入下一步
+    // 4.4 Proceed to the next step
     currentStep.value++
   } else {
-    // 4.5 当前处于第2页，判断对应的表单逻辑是否正确
+    // 4.5 Currently on Page 2, determine whether the corresponding form logic is correct
     if (createDocumentsForm.process_type === 'custom') {
-      // 4.6 校验表单数据监测是否出错，如果出错则停止程序
+      // 4.6 Verify whether an error occurs in form data monitoring, and stop the program if an error occurs.
       const errors = await customRuleFormRef.value?.validate()
       if (errors) return
     }
 
-    // 4.7 校验通过，进入第3步（提交动作由「确定」按钮触发）
+    // 4.7 Verification passed, proceed to Step 3 (the submit action is triggered by the "Confirm" button)
     currentStep.value++
   }
 }
 
-// 5.定义获取文档状态函数
+// 5.Define the function for obtaining document status
 const fetDocumentsStatus = async () => {
-  // 5.1 调用接口获取文档状态数据
+  // 5.1 Call the interface to obtain document status data
   fetchCount++
   const resp = await getDocumentsStatus(props.dataset_id, batch)
   const data = resp.data
 
-  // 5.2 同步文档状态信息
+  // 5.2 Synchronize document status information
   documents.splice(0, documents.length, ...data)
 
-  // 5.3 如果请求次数超过限制则停止
+  // 5.3 Stop if the number of requests exceeds the limit
   if (fetchCount >= 30) stopTimer()
 
-  // 5.4 如果文档都处理完毕（处理完成或者出错）则停止
+  // 5.4 Stop if all documents have been processed (either completed or failed).
   const isCompleted = data.every(
     (document) => document.status === 'completed' || document.status === 'error',
   )
   if (isCompleted) stopTimer()
 }
 
-// 6.定义开始/停止定时器函数
+// 6.Define start/stop timer functions
 const startTimer = () => (timer = setInterval(fetDocumentsStatus, 5000))
 const stopTimer = () => {
   if (timer) {
@@ -103,7 +111,7 @@ const stopTimer = () => {
   }
 }
 
-// 7.定义提交处理函数：调用接口提交并进入处理中状态
+// 7.Define the submission‑processing function: call the interface to submit and enter the processing state
 const submitDocuments = async () => {
   try {
     createDocumentsLoading.value = true
@@ -112,9 +120,9 @@ const submitDocuments = async () => {
       process_type: createDocumentsForm.process_type,
     }
 
-    // 如果处理类型为自定义，则添加上处理规则
+    // If the processing type is custom, add the processing rules.
     if (createDocumentsForm.process_type === 'custom') {
-      // 处理转义的分隔符为非转义数据
+      // Process escaped delimiters as unescaped data
       req.rule = {
         pre_process_rules: [
           {
@@ -136,7 +144,7 @@ const submitDocuments = async () => {
       }
     }
 
-    // 发起请求并获取预处理批次，随后进入处理中状态并轮询进度
+    // Initiate a request to obtain the pre‑processing batch, then enter the processing state and poll for progress
     const resp = await createDocuments(props.dataset_id, req)
     batch = resp.data.batch
     submitted.value = true
@@ -147,13 +155,13 @@ const submitDocuments = async () => {
   }
 }
 
-// 7.1 完成处理函数：关闭弹窗并触发完成回调（刷新列表）
+// 7.1 Completion handler: close the pop‑up window and trigger the completion callback (refresh the list)
 const handleFinish = () => {
   hideModal()
   props.onAfterSubmit()
 }
 
-// 7.2 上一步处理函数：停止轮询并回退一步
+// 7.2 Previous‑step processing function: stop polling and roll back one step
 const handlePrevStep = () => {
   if (currentStep.value > 1) {
     stopTimer()
@@ -161,7 +169,7 @@ const handlePrevStep = () => {
   }
 }
 
-// 8.重置向导状态
+// 8.Reset wizard status
 const resetState = () => {
   stopTimer()
   currentStep.value = 1
@@ -185,7 +193,7 @@ const resetState = () => {
   createDocumentsLoading.value = false
 }
 
-// 9.监听 visible，打开或关闭时都重置向导状态
+// 9.Listen to visible and reset the wizard state when it is turned on or off
 watch(
   () => props.visible,
   () => {
@@ -193,10 +201,10 @@ watch(
   },
 )
 
-// 10.组件卸载时清理定时器
+// 10.Clean up the timer when the component is unmounted
 onUnmounted(() => stopTimer())
 
-// 11.处理上传文件的自定义请求
+// 11.Custom request for processing uploaded files
 const handleCustomRequest: any = async (option: any) => {
   const { fileItem, onSuccess } = option
   const resp = await uploadFile(fileItem.file)

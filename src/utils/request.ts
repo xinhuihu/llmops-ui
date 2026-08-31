@@ -1,10 +1,10 @@
 import { Message } from '@arco-design/web-vue'
 import { apiPrefix, httpCode } from '@/config'
 
-// 1.超时时间为100s
+// 1.The timeout period is 100s
 const TIME_OUT = 100000
 
-// 2.基础的配置
+// 2.basic configuration
 const baseFetchOptions = {
   method: 'GET',
   mode: 'cors',
@@ -15,28 +15,28 @@ const baseFetchOptions = {
   redirect: 'follow',
 }
 
-// 3.fetch参数类型
+// 3.fetch parameter types
 type FetchOptionType = Omit<RequestInit, 'body'> & {
   params?: Record<string, any>
   body?: BodyInit | Record<string, any> | null
 }
 
-// 4.封装基础的fetch请求
+// 4.Encapsulate basic fetch requests
 const baseFetch = <T>(url: string, fetchOptions: FetchOptionType): Promise<T> => {
-  // 5.将所有的配置信息合并起来
+  // 5.Combine all the configuration information
   const options: typeof baseFetchOptions & FetchOptionType = Object.assign(
     {},
     baseFetchOptions,
     fetchOptions,
   )
 
-  // 6.组装url
+  // 6.Assemble the URL
   let urlWithPrefix = `${apiPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
-  // 7.解构出对应的请求方法、params、body参数
+  // 7.Parse out the corresponding request method, params and body parameters
   const { method, params, body } = options
 
-  // 8.如果请求是GET方法，并且传递了params参数
+  // 8.If the request uses the GET method and the params parameter is passed
   if (method === 'GET' && params) {
     const paramsArray: string[] = []
     Object.keys(params).forEach((key) => {
@@ -51,20 +51,20 @@ const baseFetch = <T>(url: string, fetchOptions: FetchOptionType): Promise<T> =>
     delete options.params
   }
 
-  // 9.处理post传递的数据
+  // 9.Process data transmitted via POST
   if (body) {
     options.body = JSON.stringify(body)
   }
 
-  // 10.同时发起两个Promise(或者是说两个操作，看谁先返回，就先结束)
+  // 10.Initiate two Promises simultaneously (or two operations; whichever returns first gets completed first)
   return Promise.race([
-    // 11.使用定时器来检测是否超时
+    // 11.Use a timer to detect whether a timeout has occurred
     new Promise((resolve, reject) => {
       setTimeout(() => {
-        reject('接口已超时')
+        reject('The interface has timed out')
       }, TIME_OUT)
     }),
-    // 12.发起一个正常请求
+    // 12.Initiate a normal request
     new Promise((resolve, reject) => {
       globalThis
         .fetch(urlWithPrefix, options as RequestInit)
@@ -86,50 +86,50 @@ const baseFetch = <T>(url: string, fetchOptions: FetchOptionType): Promise<T> =>
 }
 
 // =============================================
-// SSE 流式请求部分（已按 W3C SSE 规范重写）
+// SSE Streaming request section (rewritten in accordance with the W3C SSE specification)
 // =============================================
 
 /**
- * 封装基于 POST 的 SSE（流式事件响应）请求
+ * Encapsulate POST‑based SSE (Server‑Sent Events) streaming event‑response requests
  */
 export const ssePost = async (
   url: string,
   fetchOptions: FetchOptionType,
   onData: (data: { [key: string]: any }) => void,
 ) => {
-  // 组装基础的 fetch 请求配置
+  // Assemble the basic fetch request configuration
   const options = Object.assign({}, baseFetchOptions, { method: 'POST' }, fetchOptions)
 
-  // 组装请求 URL
+  // Assemble the request URL
   const urlWithPrefix = `${apiPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
-  // 解构 body 参数，并处理 body 对应的数据
+  // Deconstruct the body parameter and process the corresponding data of the body
   const { body } = fetchOptions
   if (body) options.body = JSON.stringify(body)
 
-  // 发起 fetch 请求
+  // Initiate a fetch request
   const response = await globalThis.fetch(urlWithPrefix, options as RequestInit)
   return handleStream(response, onData)
 }
 
 /**
- * 处理 SSE 流式响应
- * 严格按照 W3C SSE 规范解析：
- * - 事件以 \n\n 分隔
- * - 字段以首个冒号分隔，冒号后最多去除一个空格
- * - 多行 data 用 \n 拼接
- * - 有 data 字段即分派（含空串），无 event 默认为 "message"
+ * Process SSE streaming responses
+ * Parse strictly in accordance with the W3C SSE specification:
+ * - Events are separated by \n\n
+ * - Fields are split at the first colon, with at most one space removed after the colon
+ * - Multi‑line data is concatenated with \n
+ * - Dispatch occurs when the data field exists (including empty strings); defaults to "message" if no event is specified
  */
 const handleStream = async (
   response: Response,
   onData: (data: { [key: string]: any }) => void,
 ) => {
-  // 1. 检测网络请求是否正常
+  // 1. Check whether the network request is normal
   if (!response.ok) {
-    throw new Error(`网络请求失败: ${response.status} ${response.statusText}`)
+    throw new Error(`Network request failed: ${response.status} ${response.statusText}`)
   }
 
-  // 2. 检测 Content-Type，防止误解析非 SSE 响应（如后端返回的 JSON 错误体）
+  // 2. Detect the Content‑Type to prevent mis‑parsing non‑SSE responses (e.g., JSON error bodies returned by the backend)
   const contentType = response.headers.get('content-type') || ''
   if (!contentType.includes('text/event-stream')) {
     const errorBody = await response.text()
@@ -143,7 +143,7 @@ const handleStream = async (
     throw new Error(message)
   }
 
-  // 3. 构建 reader 以及 decoder
+  // 3. Construct the reader and decoder
   const reader = response.body?.getReader()
   if (!reader) {
     throw new Error('浏览器不支持 ReadableStream')
@@ -293,6 +293,7 @@ export const upload = <T>(url: string, options: UploadOptions = {}): Promise<T> 
     xhr.ontimeout = () => reject(new Error('upload timeout'))
 
     xhr.onreadystatechange = () => {
+      //The number 4 represents the uploading processing has been completed
       if (xhr.readyState === 4) {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(xhr.response as T)

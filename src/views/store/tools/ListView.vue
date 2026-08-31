@@ -60,18 +60,20 @@ onMounted(async () => {
       <!-- Plugin categories+ search Box -->
       <div class="flex items-center justify-between mb-6">
         <!-- Left categories -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-6 tab-wrap">
           <a-button
-            :type="category === 'all' ? 'secondary' : 'text'"
-            class="rounded-lg !text-gray-700 px-3"
+            type="text"
+            class="tab-item"
+            :class="{ 'tab-item--active': category === 'all' }"
             @click="category = 'all'"
-            >All
+          >All
           </a-button>
           <a-button
             v-for="item in categories"
             :key="item.category"
-            :type="category === item.category ? 'secondary' : 'text'"
-            class="rounded-lg !text-gray-700 px-3"
+            type="text"
+            class="tab-item"
+            :class="{ 'tab-item--active': category === item.category }"
             @click="category = item.category"
           >
             {{ item.name }}
@@ -214,4 +216,34 @@ onMounted(async () => {
   </a-spin>
 </template>
 
-<style scoped></style>
+<style scoped>
+.tab-wrap :deep(.arco-btn) {
+  border-radius: 0 !important;
+  padding: 8px 12px !important;
+  background: transparent !important;
+  border: none !important;
+  position: relative;
+  color: #5f6368;
+  transition: color 0.2s ease;
+}
+
+.tab-wrap :deep(.arco-btn:hover) {
+  background-color: transparent !important;
+  color: #3370ff;
+}
+
+.tab-wrap :deep(.tab-item--active.arco-btn) {
+  color: #3370ff !important;
+  font-weight: 600 !important;
+}
+
+.tab-wrap :deep(.tab-item--active.arco-btn::after) {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #3370ff;
+}
+</style>

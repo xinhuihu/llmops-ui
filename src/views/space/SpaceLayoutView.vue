@@ -50,7 +50,7 @@ watch(
           type="primary"
           class="rounded-lg"
         >
-          Create AI APP
+          Create Agent
         </a-button>
         <a-button
           v-if="route.path.startsWith('/space/tools')"
@@ -79,36 +79,36 @@ watch(
       <!-- Navigation Buttons + Search Box -->
       <div class="flex items-center justify-between mb-6">
         <!-- Left‑side navigation -->
-        <div class="flex items-center gap-2">
+        <nav class="flex items-center gap-6">
           <router-link
             to="/space/apps"
-            class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
-            active-class="bg-gray-100"
+            class="nav-tab"
+            active-class="nav-tab--active"
           >
-            AI Apps
+            Agent
           </router-link>
           <router-link
             to="/space/tools"
-            class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
-            active-class="bg-gray-100"
+            class="nav-tab"
+            active-class="nav-tab--active"
           >
-            Plugins
+            Tool
           </router-link>
           <router-link
             to="/space/workflows"
-            class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
-            active-class="bg-gray-100"
+            class="nav-tab"
+            active-class="nav-tab--active"
           >
-            Workflows
+            Workflow
           </router-link>
           <router-link
             to="/space/datasets"
-            class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
-            active-class="bg-gray-100"
+            class="nav-tab"
+            active-class="nav-tab--active"
           >
             Knowledge Base
           </router-link>
-        </div>
+        </nav>
         <!-- Search on the right -->
         <a-input-search
           v-model="searchWord"
@@ -127,4 +127,33 @@ watch(
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.nav-tab {
+  position: relative;
+  padding: 8px 12px;
+  color: #5f6368;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+.nav-tab:hover {
+  color: #3370ff;
+}
+.nav-tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background-color: transparent;
+  transition: background-color 0.2s ease;
+}
+.nav-tab--active {
+  color: #3370ff;
+  font-weight: 600;
+}
+.nav-tab--active::after {
+  background-color: #3370ff;
+}
+</style>

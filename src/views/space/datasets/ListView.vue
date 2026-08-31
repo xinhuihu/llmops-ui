@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  DELETE_DATASET_STEP_TOTAL,
   useCreateOrUpdateDataset,
   useDeleteDataset,
   useGetDatasetsWithPage,
@@ -26,9 +27,9 @@ const {
   showUpdateModal,
   updateShowUpdateModal,
 } = useCreateOrUpdateDataset()
-const { handleDelete } = useDeleteDataset()
+const { handleDelete, retryDelete, deletingTasks } = useDeleteDataset()
 
-// 处理上传文件的自定义请求
+// Custom request for processing uploaded files
 const handleCustomRequest: any = async (option: any) => {
   const { fileItem, onSuccess } = option
   const resp = await uploadImage(fileItem.file)
@@ -36,7 +37,7 @@ const handleCustomRequest: any = async (option: any) => {
   onSuccess(resp)
 }
 
-// 移除文件前的钩子
+// Hook before file removal
 const handleBeforeRemove: any = () => {
   form.icon = ''
   return true
@@ -90,7 +91,7 @@ const handleSubmit = async ({ errors }: { errors: Record<string, ValidatedError>
   // 1.Throw directly if an error occurs
   if (errors) return
 
-  // 2.Call the knowledge base saving service
+  // 2.Call the knowledge base-saving service
   await saveDataset(updateDatasetID)
 
   // 3.Close the modal window and refresh the data
@@ -109,62 +110,104 @@ const handleSubmit = async ({ errors }: { errors: Record<string, ValidatedError>
     <a-row :gutter="[20, 20]" class="flex-1">
       <!-- UI state with data -->
       <a-col v-for="dataset in datasets" :key="dataset.id" :span="6">
-        <a-card hoverable class="cursor-pointer rounded-lg">
-          <!-- Top Knowledge Base Name -->
-          <div class="flex items-center gap-3 mb-3">
-            <!-- Icon on the left -->
-            <a-avatar :size="40" shape="square" :image-url="dataset.icon" />
-            <!-- Information from the knowledge base on the right -->
-            <div class="flex flex-1 justify-between">
-              <div class="flex flex-col">
-                <router-link
-                  :to="{
-                    name: 'space-datasets-documents-list',
-                    params: { dataset_id: dataset.id },
-                  }"
-                  class="text-base text-gray-900 font-bold"
-                  >{{ dataset.name }}
-                </router-link>
-                <div class="text-xs text-gray-500 line-clamp-1">
-                  {{ dataset.document_count }} doc ·
-                  {{ Math.round(dataset.character_count / 1000) }}k characters ·
-                  {{ dataset.related_app_count }} Associated agent
+        <div class="relative">
+          <a-card hoverable class="cursor-pointer rounded-lg">
+            <!-- Top Knowledge Base Name -->
+            <div class="flex items-center gap-3 mb-3">
+              <!-- Icon on the left -->
+              <a-avatar :size="40" shape="square" :image-url="dataset.icon" />
+              <!-- Information from the knowledge base on the right -->
+              <div class="flex flex-1 justify-between">
+                <div class="flex flex-col">
+                  <router-link
+                    :to="{
+                      name: 'space-datasets-documents-list',
+                      params: { dataset_id: dataset.id },
+                    }"
+                    class="text-base text-gray-900 font-bold"
+                    >{{ dataset.name }}
+                  </router-link>
+                  <div class="text-xs text-gray-500 line-clamp-1">
+                    {{ dataset.document_count }} doc ·
+                    {{ Math.round(dataset.character_count / 1000) }}k characters ·
+                    {{ dataset.related_app_count }} Associated agent
+                  </div>
                 </div>
-              </div>
-              <!-- Operation button -->
-              <a-dropdown position="br">
-                <a-button type="text" size="small" class="rounded-lg !text-gray-700">
-                  <template #icon>
-                    <icon-more />
+                <!-- Operation button -->
+                <a-dropdown position="br">
+                  <a-button type="text" size="small" class="rounded-lg !text-gray-700">
+                    <template #icon>
+                      <icon-more />
+                    </template>
+                  </a-button>
+                  <template #content>
+                    <a-doption @click="() => handleUpdate(dataset.id)">Setting</a-doption>
+                    <a-doption
+                      class="!text-red-500"
+                      @click="() => handleDelete(dataset.id, async () => await loadDatasets(true))"
+                    >
+                      Delete
+                    </a-doption>
                   </template>
-                </a-button>
-                <template #content>
-                  <a-doption @click="() => handleUpdate(dataset.id)">Setting</a-doption>
-                  <a-doption
-                    class="!text-red-500"
-                    @click="() => handleDelete(dataset.id, async () => await loadDatasets(true))"
+                </a-dropdown>
+              </div>
+            </div>
+            <!-- Knowledge base description information -->
+            <div class="leading-[18px] text-gray-500 h-[72px] line-clamp-4 mb-2">
+              {{ dataset.description }}
+            </div>
+            <!-- Knowledge base owner information -->
+            <div class="flex items-center gap-1.5">
+              <a-avatar :size="18" class="bg-blue-700">
+                <icon-user />
+              </a-avatar>
+              <div class="text-xs text-gray-400">
+                Kevin · Recently Edited
+                {{ moment(dataset.created_at * 1000).format('MM-DD HH:mm') }}
+              </div>
+            </div>
+          </a-card>
+          <!-- Delete progress overlay mask -->
+          <div
+            v-if="deletingTasks[dataset.id]"
+            class="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70 backdrop-blur-[2px]"
+          >
+            <div class="flex max-h-full w-full flex-col items-center gap-3 overflow-y-auto p-6 text-center">
+              <!-- Pending / running state -->
+              <template v-if="deletingTasks[dataset.id].status !== 'failed'">
+                <a-spin />
+                <div class="text-sm font-medium text-gray-700">Deleting…</div>
+                <div class="flex flex-col items-start gap-1.5">
+                  <div
+                    v-for="step in deletingTasks[dataset.id].progress"
+                    :key="step.key"
+                    class="flex items-center gap-1.5 text-xs text-green-600"
                   >
-                    Delete
-                  </a-doption>
-                </template>
-              </a-dropdown>
+                    <icon-check-circle-fill />
+                    <span>{{ step.label }}</span>
+                  </div>
+                </div>
+                <div class="text-xs text-gray-500">
+                  {{ deletingTasks[dataset.id].progress.length }}/{{ DELETE_DATASET_STEP_TOTAL }}
+                </div>
+              </template>
+              <!-- Failed state -->
+              <template v-else>
+                <icon-close-circle-fill class="text-xl text-red-500" />
+                <div class="text-sm text-red-500">
+                  {{ deletingTasks[dataset.id].error || 'Delete failed' }}
+                </div>
+                <a-button
+                  type="primary"
+                  size="small"
+                  @click="() => retryDelete(dataset.id, async () => await loadDatasets(true))"
+                >
+                  Retry
+                </a-button>
+              </template>
             </div>
           </div>
-          <!-- Knowledge base description information -->
-          <div class="leading-[18px] text-gray-500 h-[72px] line-clamp-4 mb-2">
-            {{ dataset.description }}
-          </div>
-          <!-- Knowledge base owner information -->
-          <div class="flex items-center gap-1.5">
-            <a-avatar :size="18" class="bg-blue-700">
-              <icon-user />
-            </a-avatar>
-            <div class="text-xs text-gray-400">
-              Kevin · Recently Edited
-              {{ moment(dataset.created_at * 1000).format('MM-DD HH:mm') }}
-            </div>
-          </div>
-        </a-card>
+        </div>
       </a-col>
       <!-- UI state with no data -->
       <a-col v-if="datasets.length === 0" :span="24">
@@ -251,7 +294,6 @@ const handleSubmit = async ({ errors }: { errors: Record<string, ValidatedError>
           <div class="flex items-center justify-between">
             <div class=""></div>
             <a-space :size="16">
-              <a-button class="rounded-lg" @click="handleCancel">Cancel</a-button>
               <a-button
                 :loading="submitLoading"
                 type="primary"
@@ -260,6 +302,7 @@ const handleSubmit = async ({ errors }: { errors: Record<string, ValidatedError>
               >
                 Save
               </a-button>
+              <a-button class="rounded-lg" @click="handleCancel">Cancel</a-button>
             </a-space>
           </div>
         </a-form>

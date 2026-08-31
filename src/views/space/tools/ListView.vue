@@ -8,6 +8,7 @@ import {
   updateApiToolProvider,
   validateOpenAPISchema,
 } from '@/services/api-tool'
+import { uploadImage } from '@/services/upload-file'
 import {
  type CreateApiToolProviderRequest,
 } from '@/models/api-tools'
@@ -26,7 +27,7 @@ const props = defineProps({
   },
 })
 
-const formRef = ref<InstanceType<typeof Form>>()
+
 const emits = defineEmits(['update-create-type'])
 
 
@@ -39,13 +40,24 @@ const paginator = reactive(
     total_record: 0,
   }
 )
+// const form = reactive({
+//   icon: 'https://picsum.photos/400',
+//   name: '',
+//   description: '',
+//   openapi_schema: '',
+//   headers: [] as {key: string; value: string}[],
+// })
+
 const form = reactive({
-  icon: 'https://picsum.photos/400',
+  fileList: [] as any[],
+  icon: '',
   name: '',
   description: '',
   openapi_schema: '',
   headers: [] as {key: string; value: string}[],
 })
+const formRef = ref<InstanceType<typeof Form>>()
+
 const loading = ref<boolean>(false)
 const showIdx = ref<number>(-1)
 const showUpdateModalLoading = ref<boolean>(false)
@@ -85,6 +97,21 @@ const tools = computed(() => {
   }
   return []
 })
+
+// Custom request for processing uploaded files
+const handleCustomRequest: any = async (option: any) => {
+  const { fileItem, onSuccess } = option
+  const resp = await uploadImage(fileItem.file)
+  form.icon = resp.data.image_url
+  onSuccess(resp)
+}
+
+// hook before file removal
+const handleBeforeRemove: any = () => {
+  form.icon = ''
+  return true
+}
+
 
 // deal with pagination data when scroll the windows
 const handleScroll = (event: Event) => {
@@ -157,6 +184,7 @@ const handleUpdate = async () => {
 
     // 3.Update form data
     formRef.value?.resetFields()
+    form.fileList = [{ uid: '1', name: 'Knowledge Base Icon', url: data.icon }]
     form.description = data.description
     form.icon = data.icon
     form.name = data.name
@@ -448,6 +476,10 @@ watch(
                 list-type="picture-card"
                 accept="image/png, image/jpeg"
                 class="!w-auto mx-auto"
+                v-model:file-list="form.fileList"
+                image-preview
+                :custom-request="handleCustomRequest"
+                :on-before-remove="handleBeforeRemove"
               />
             </a-form-item>
             <a-form-item

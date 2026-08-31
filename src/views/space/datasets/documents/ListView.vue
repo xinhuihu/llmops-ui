@@ -27,9 +27,9 @@ const { handleUpdate: handleUpdateEnabled } = useUpdateDocumentEnabled()
 </script>
 
 <template>
-  <div class="p-6">
+  <div class="p-6 h-full flex flex-col overflow-hidden">
     <!-- 顶部知识库详情 -->
-    <div class="flex items-center w-full gap-2 mb-6">
+    <div class="flex items-center w-full gap-2 mb-6 shrink-0">
       <!-- 左侧回退按钮 -->
       <router-link :to="{ name: 'space-datasets-list' }">
         <a-button size="mini" type="text" class="!text-gray-700">
@@ -66,12 +66,12 @@ const { handleUpdate: handleUpdateEnabled } = useUpdateDocumentEnabled()
       </div>
     </div>
     <!-- 中间检索以及召回测试 -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-6 shrink-0">
       <!-- 左侧搜索框 -->
       <a-input-search
         :default-value="route.query?.search_word || ''"
         placeholder="Please enter keywords to search documents"
-        class="w-[240px] bg-white rounded-lg border-gray-200"
+        class="w-[340px] bg-white rounded-lg border-gray-200"
         @search="
           (value: string) => {
             router.push({
@@ -93,7 +93,7 @@ const { handleUpdate: handleUpdateEnabled } = useUpdateDocumentEnabled()
       </a-space>
     </div>
     <!-- 底部表格 -->
-    <div class="">
+    <div class="flex-1 min-h-0 overflow-y-auto">
       <!-- 表格内容 -->
       <a-table
         hoverable
@@ -130,20 +130,29 @@ const { handleUpdate: handleUpdateEnabled } = useUpdateDocumentEnabled()
             cell-class="bg-transparent text-gray-700"
           />
           <a-table-column
-            title="Document Name"
+            title="Name"
             data-index="name"
-            :width="400"
+            :width="300"
             header-cell-class="!bg-gray-200 text-gray-700"
             cell-class="bg-transparent text-gray-700"
           >
             <template #cell="{ record }">
-              <div class="line-clamp-1">
+              <router-link
+                :to="{
+                  name: 'space-datasets-documents-segments-list',
+                  params: {
+                    dataset_id: route.params?.dataset_id as string,
+                    document_id: record.id as string,
+                  },
+                }"
+                class="line-clamp-1 hover:text-gray-900"
+              >
                 {{ record.name }}
-              </div>
+              </router-link>
             </template>
           </a-table-column>
           <a-table-column
-            title="Number of characters"
+            title="Size"
             data-index="character_count"
             header-cell-class="!bg-gray-200 text-gray-700"
             cell-class="bg-transparent text-gray-700"
@@ -278,7 +287,7 @@ const { handleUpdate: handleUpdateEnabled } = useUpdateDocumentEnabled()
       :dataset_id="route.params?.dataset_id as string"
       :on-after-submit="
         () => {
-          loadDocuments()
+          loadDocuments(true)
           loadDataset(route.params?.dataset_id as string)
         }
       "

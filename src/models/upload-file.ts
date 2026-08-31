@@ -1,11 +1,11 @@
 import { type BaseResponse } from '@/models/base'
 
-// 上传图片响应结构
+//Response structure for upload image
 export type UploadImageResponse = BaseResponse<{
   image_url: string
 }>
 
-// 上传文件响应结构
+//Response structure for upload file
 export type UploadFileResponse = BaseResponse<{
   id: string
   account_id: string

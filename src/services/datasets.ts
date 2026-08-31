@@ -13,6 +13,12 @@ import {
   type HitRequest,
   type HitResponse,
   type UpdateDatasetRequest,
+  type GetSegmentsWithPageRequest,
+  type GetSegmentsWithPageResponse,
+  type CreateSegmentRequest,
+  type UpdateSegmentRequest,
+  type GetSegmentResponse,
+
 } from '@/models/datasets'
 import { type BaseResponse } from '@/models/base'
 
@@ -115,4 +121,73 @@ export const createDocuments = (dataset_id: string, req: CreateDocumentsRequest)
 // Obtain the processing status of documents based on batch processing
 export const getDocumentsStatus = (dataset_id: string, batch: string) => {
   return get<GetDocumentsStatusResponse>(`/datasets/${dataset_id}/documents/batch/${batch}`)
+}
+
+// Get the specified list of document fragments
+export const getSegmentsWithPage = (
+  dataset_id: string,
+  document_id: string,
+  req: GetSegmentsWithPageRequest,
+) => {
+  return get<GetSegmentsWithPageResponse>(
+    `/datasets/${dataset_id}/documents/${document_id}/segments`,
+    {
+      params: req,
+    },
+  )
+}
+
+// Update the enabled status of the document segment
+export const updateSegmentEnabled = (
+  dataset_id: string,
+  document_id: string,
+  segment_id: string,
+  enabled: boolean,
+) => {
+  return post<BaseResponse<any>>(
+    `/datasets/${dataset_id}/documents/${document_id}/segments/${segment_id}/enabled`,
+    { body: { enabled } },
+  )
+}
+
+// Create a new segment of the document
+export const createSegment = (
+  dataset_id: string,
+  document_id: string,
+  req: CreateSegmentRequest,
+) => {
+  return post<BaseResponse<any>>(`/datasets/${dataset_id}/documents/${document_id}/segments`, {
+    body: req,
+  })
+}
+
+// Delete the specific segment of the document
+export const deleteSegment = (
+  dataset_id: string,
+  document_id: string,
+  segment_id: string
+)=>{
+  return post<BaseResponse<any>>(
+    `/datasets/${dataset_id}/documents/${document_id}/segments/${segment_id}/delete`,
+  )
+}
+
+// Modify the content of the document segment
+export const updateSegment = (
+  dataset_id: string,
+  document_id: string,
+  segment_id: string,
+  req: UpdateSegmentRequest,
+) => {
+  return post<BaseResponse<any>>(
+    `/datasets/${dataset_id}/documents/${document_id}/segments/${segment_id}`,
+    { body: req },
+  )
+}
+
+// Query document fragment details
+export const getSegment = (dataset_id: string, document_id: string, segment_id: string) => {
+  return get<GetSegmentResponse>(
+    `/datasets/${dataset_id}/documents/${document_id}/segments/${segment_id}`,
+  )
 }

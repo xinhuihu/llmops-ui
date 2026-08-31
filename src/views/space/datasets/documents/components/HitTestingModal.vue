@@ -4,14 +4,14 @@ import moment from 'moment'
 import { getDatasetQueries, hit } from '@/services/datasets'
 import { Message } from '@arco-design/web-vue'
 
-// 1.定义组件接收数据以及事件
+// 1.Define the data reception and events of the component
 const props = defineProps({
   visible: { type: Boolean, required: true },
   dataset_id: { type: String, required: true },
 })
 const emits = defineEmits(['update:visible'])
 
-// 2.最近查询相关的内容
+// 2.Recently queried relevant content
 const queriesLoading = ref(false)
 const queries = reactive<Array<any>>([])
 const loadQueries = async () => {
@@ -26,7 +26,7 @@ const loadQueries = async () => {
   }
 }
 
-// 3.知识库检索设置相关
+// 3.Related to knowledge base retrieval settings
 const retrievalSettingModalVisible = ref(false)
 const defaultRetrievalSetting = {
   retrieval_strategy: 'semantic',
@@ -35,24 +35,24 @@ const defaultRetrievalSetting = {
 }
 const retrievalSettingForm = reactive({ ...defaultRetrievalSetting })
 const hideRetrievalSettingModal = () => {
-  // 复原检索策略
+  // Restore retrieval strategy
   Object.assign(retrievalSettingForm, { ...hitTestingForm })
 
-  // 隐藏模态窗
+  // Hide a modal window
   retrievalSettingModalVisible.value = false
 }
 const saveRetrievalSetting = () => {
-  // 重置检索查询片段列表
+  // Reset the list of retrieved query fragments
   hitTestingSegments.splice(0, hitTestingSegments.length)
 
-  // 更新检索策略
+  // Update the retrieval strategy
   Object.assign(hitTestingForm, { query: hitTestingForm.query, ...retrievalSettingForm })
 
-  // 隐藏模态窗
+  // Hide a modal window
   retrievalSettingModalVisible.value = false
 }
 
-// 4.召回设置相关
+// 4.Recall‑setting related
 const hitTestingLoading = ref(false)
 const hitTestingSegments = reactive<Array<any>>([])
 const hitTestingForm = reactive({
@@ -61,7 +61,7 @@ const hitTestingForm = reactive({
 })
 const hideHitTestingModal = () => emits('update:visible', false)
 const handleHitTesting = async () => {
-  // 检索的源文本是否为空
+  // Is the retrieved source text empty?
   if (hitTestingForm.query.trim() === '') {
     Message.error('The source text cannot be empty')
     return
@@ -80,15 +80,15 @@ const handleHitTesting = async () => {
   }
 }
 
-// 5.监听数据变化
+// 5.Monitor data changes
 watch(
   () => props.visible,
   async (newValue) => {
     if (newValue) {
-      // 模态窗开启，加载最近查询
+      // Modal window opens, loading recent queries
       await loadQueries()
     } else {
-      // 模态窗关闭，清空最近查询、召回记录、初始化检索配置
+      // Modal window closed, clear recent queries and recall records, and initialize retrieval configuration
       queries.splice(0, queries.length)
       hitTestingSegments.splice(0, hitTestingSegments.length)
 
@@ -101,7 +101,7 @@ watch(
 
 <template>
   <div class="">
-    <!-- 召回测试模态窗 -->
+    <!-- Recall test modal window -->
     <a-modal
       :width="1000"
       :visible="props.visible"
@@ -110,7 +110,7 @@ watch(
       modal-class="rounded-xl h-3/4 overflow-auto scrollbar-w-none"
       @cancel="hideHitTestingModal"
     >
-      <!-- 顶部标题 -->
+      <!-- Top Title -->
       <div class="flex items-center justify-between">
         <div class="text-lg font-bold text-gray-700">Retrieval Testing</div>
         <a-button type="text" class="!text-gray-700" size="small" @click="hideHitTestingModal">

@@ -175,3 +175,60 @@ export type GetDocumentsStatusResponse = BaseResponse<
     created_at: number
   }>
 >
+
+// Request structure for getting a segment list of the specified document
+export type GetSegmentsWithPageRequest = {
+  current_page: number
+  page_size: number
+  search_word: string
+}
+
+// Response Structure for getting a segment List of Specified Documents
+export type GetSegmentsWithPageResponse = BasePaginatorResponse<{
+  id: string
+  dataset_id: string
+  document_id: string
+  position: number
+  content: string
+  keywords: string[]
+  character_count: number
+  token_count: number
+  hit_count: number
+  enabled: boolean
+  disabled_at: number
+  status: string
+  error: string
+  updated_at: number
+  created_at: number
+}>
+
+// Request Structure for New Document segment
+export type CreateSegmentRequest = {
+  content: string
+  keywords: string[]
+}
+
+// Request structure for modifying document segment
+export type UpdateSegmentRequest = {
+  content: string
+  keywords: string[]
+}
+
+// Query Document Snippet Response Structure
+export type GetSegmentResponse = BaseResponse<{
+  id: string
+  document_id: string
+  dataset_id: string
+  position: number
+  content: string
+  keywords: string[]
+  character_count: number
+  token_count: number
+  hit_count: number
+  hash: string
+  enabled: boolean
+  status: string
+  error: string
+  updated_at: number
+  created_at: number
+}>
