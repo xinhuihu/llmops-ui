@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import Sidebar from './components/Sidebar.vue'
 import { logout } from '@/services/auth'
 import { getCurrentUser } from '@/services/account'

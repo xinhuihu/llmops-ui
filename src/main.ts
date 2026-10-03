@@ -8,6 +8,7 @@ import App from '@/App.vue'
 import router from '@/router'
 
 import '@arco-design/web-vue/dist/arco.css'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import '@/assets/styles/main.css'
 
 // 全局将 Arco 组件内置文案（上传、分页、空状态等）切换为英文

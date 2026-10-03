@@ -1,6 +1,6 @@
 import { type BasePaginatorResponse,type BaseResponse } from '@/models/base'
 //Get self-defined api plugin response
-export  type GetApiToolProviderWithPageResponse = BasePaginatorResponse<{
+export  type GetApiToolProvidersWithPageResponse = BasePaginatorResponse<{
   id:string
   name: string
   icon: string
@@ -39,3 +39,23 @@ export type GetApiToolProviderResponse = BaseResponse<{
   created_at: number
 }
 >
+
+// Get details of custom API tools
+export type GetApiToolResponse = BaseResponse<{
+  id: string
+  name: string
+  description: string
+  provider: {
+    id: string
+    name: string
+    icon: string
+    headers: { key: string; value: string }[]
+    description: string
+  }
+  inputs: {
+    type: string
+    name: string
+    required: boolean
+    description: string
+  }[]
+}>

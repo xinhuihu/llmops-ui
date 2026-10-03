@@ -1,9 +1,10 @@
 import {get,post} from '@/utils/request'
-import {
-  type GetApiToolProviderWithPageResponse,
-  type CreateApiToolProviderRequest,
-  type GetApiToolProviderResponse,
-  type UpdateApiToolProviderRequest,
+import type {
+  GetApiToolProvidersWithPageResponse,
+  CreateApiToolProviderRequest,
+  GetApiToolProviderResponse,
+  UpdateApiToolProviderRequest,
+  GetApiToolResponse
 } from '@/models/api-tools'
 import { type BaseResponse } from '@/models/base'
 
@@ -13,7 +14,7 @@ export const getApiToolProvidersWithPage = (
   page_size: number = 20,
   search_word: string = ""
 ) => {
-  return get<GetApiToolProviderWithPageResponse>('/api-tools', {
+  return get<GetApiToolProvidersWithPageResponse>('/api-tools', {
     params: { current_page, page_size, search_word },
   });
 };
@@ -37,6 +38,10 @@ export const updateApiToolProvider = (provider_id: string, req: UpdateApiToolPro
   return post<BaseResponse<any>>(`/api-tools/${provider_id}`, {
     body: req,
   })
+}
+// 获取API工具详情信息
+export const getApiTool = (provider_id: string, tool_name: string) => {
+  return get<GetApiToolResponse>(`/api-tools/${provider_id}/tools/${tool_name}`)
 }
 
 // delete Api Tool Provider

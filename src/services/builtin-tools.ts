@@ -1,5 +1,9 @@
 import {get} from '@/utils/request'
-import {type GetBuiltinToolsResponse,type GetCategoriesResponse} from '@/models/builtin-tool'
+import type {
+  GetBuiltinToolsResponse,
+  GetCategoriesResponse,
+  GetBuiltinToolResponse
+} from '@/models/builtin-tool'
 
 //Get categories of builtin-tool
 
@@ -11,3 +15,9 @@ export  const getCategories =() =>{
 export const getBuiltinTools =() =>{
   return get <GetBuiltinToolsResponse>('/builtin-tools')
 }
+
+//Api interface to get the detail of specific tools
+export const getBuiltinTool = (provider_name: string, tool_name: string) => {
+  return get<GetBuiltinToolResponse>(`/builtin-tools/${provider_name}/tools/${tool_name}`)
+}
+

@@ -53,7 +53,7 @@ const handleSubmit = async ({ errors }: { errors: Record<string, ValidatedError>
 
 <template>
   <div class="">
-    <!-- 顶部标题 -->
+    <!-- Top Title -->
     <div class="text-gray-900 font-bold text-2xl leading-8">WenQu AI Agent platform</div>
     <p class="text-base leading-6 text-gray-600">Efficiently develop your AI‑native agent</p>
     <!-- 错误提示占位符 -->
@@ -72,7 +72,7 @@ const handleSubmit = async ({ errors }: { errors: Record<string, ValidatedError>
         :validate-trigger="['change', 'blur']"
         hide-label
       >
-        <a-input v-model="loginForm.email" size="large" placeholder="Login account">
+        <a-input v-model="loginForm.email" size="large" placeholder="Login account" autocomplete="username">
           <template #prefix>
             <icon-user />
           </template>
@@ -84,7 +84,7 @@ const handleSubmit = async ({ errors }: { errors: Record<string, ValidatedError>
         :validate-trigger="['change', 'blur']"
         hide-label
       >
-        <a-input-password v-model="loginForm.password" size="large" placeholder="Account password">
+        <a-input-password v-model="loginForm.password" size="large" placeholder="Account password" autocomplete="current-password">
           <template #prefix>
             <icon-lock />
           </template>

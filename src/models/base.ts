@@ -15,3 +15,6 @@ export type BasePaginatorResponse<T> = BaseResponse<{
     page_size: number
   }
 }>
+
+// Request structure of  base pagination
+export type  BasePaginatorRequest = {current_page:number; page_size:number}

@@ -8,7 +8,7 @@ import {
   updatePassword as updatePasswordService,
 } from '@/services/account'
 import { uploadImage } from '@/services/upload-file'
-import { Message } from '@arco-design/web-vue'
+import { Message, type RequestOption, type UploadRequest } from '@arco-design/web-vue'
 
 // 1.定义自定义组件所需数据
 const props = defineProps({
@@ -36,6 +36,34 @@ const accountForm = reactive<{
 const updateAccount = async () => {
   const resp = await getCurrentUser()
   accountStore.update(resp.data)
+}
+
+// Custom upload handler: returns an UploadRequest (with abort), performs the upload and account updates asynchronously
+const customRequest = (option: RequestOption): UploadRequest => {
+  const { fileItem, onSuccess, onError } = option
+
+  // 1. Upload the image and update the avatar
+  uploadImage(fileItem.file as File)
+    .then((upload_resp) => {
+      accountForm.avatar = upload_resp.data.image_url
+      onSuccess(upload_resp)
+
+      // 2. Update the account avatar
+      return updateAvatar(accountForm.avatar as string)
+    })
+    .then((update_resp) => {
+      Message.success(update_resp.message)
+
+      // 3. Refresh account info
+      return updateAccount()
+    })
+    .catch(onError)
+
+  return {
+    abort() {
+      // Upload cancellation is not supported
+    },
+  }
 }
 
 // 3.关闭模态窗处理器
@@ -109,22 +137,7 @@ watch(
               list-type="picture-card"
               :limit="1"
               image-preview
-              :custom-request="
-                async (option) => {
-                  // 1.提取数据并发起请求获取响应内容
-                  const { fileItem, onSuccess } = option
-                  const upload_resp = await uploadImage(fileItem.file as File)
-                  accountForm.avatar = upload_resp.data.image_url
-                  onSuccess(upload_resp)
-
-                  // 2.更新账号头像
-                  const update_resp = await updateAvatar(accountForm.avatar as string)
-                  Message.success(update_resp.message)
-
-                  // 3.更新账号信息
-                  await updateAccount()
-                }
-              "
+              :custom-request="customRequest"
             />
           </a-form-item>
           <a-form-item field="name">
