@@ -1,4 +1,4 @@
-import { get, post } from '@/utils/request'
+import { get, post, getBlob } from '@/utils/request'
 import {
   type CreateDatasetRequest,
   type CreateDocumentsRequest,
@@ -74,6 +74,11 @@ export const getDocumentsWithPage = (
 // Get details of the specified document
 export const getDocument = (dataset_id: string, document_id: string) => {
   return get<GetDocumentResponse>(`/datasets/${dataset_id}/documents/${document_id}`)
+}
+
+// Fetch the original file bytes of a document for preview/download
+export const previewDocument = (dataset_id: string, document_id: string) => {
+  return getBlob(`/datasets/${dataset_id}/documents/${document_id}/preview`)
 }
 
 // Update the activation status of the specified document

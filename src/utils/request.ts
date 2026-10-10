@@ -257,6 +257,43 @@ export const post = <T>(url: string, options = {}) => {
   return request<T>(url, Object.assign({}, options, { method: 'POST' }))
 }
 
+// Fetch a raw binary resource (document preview/download). Unlike ``baseFetch``, the
+// response body is a Blob rather than the JSON envelope, so a JSON body signals an error.
+export const getBlob = async (url: string): Promise<Blob> => {
+  // 1. Assemble the request URL and attach the auth token
+  const urlWithPrefix = `${apiPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  const { credential, clear: clearCredential } = useCredentialStore()
+  const access_token = credential.access_token
+  const headers = new Headers()
+  if (access_token) headers.set('Authorization', `Bearer ${access_token}`)
+
+  // 2. Initiate the fetch request
+  const response = await globalThis.fetch(urlWithPrefix, {
+    method: 'GET',
+    credentials: 'include',
+    headers,
+  })
+
+  // 3. A JSON body is the error envelope, raw bytes otherwise
+  const contentType = response.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) {
+    const json = await response.json()
+    if (json.code === httpCode.unauthorized) {
+      clearCredential()
+      await router.replace({ path: '/auth/login' })
+    } else {
+      Message.error(json.message)
+    }
+    throw new Error(json.message)
+  }
+  if (!response.ok) {
+    Message.error(`Network request failed: ${response.status} ${response.statusText}`)
+    throw new Error(`Network request failed: ${response.status}`)
+  }
+
+  return response.blob()
+}
+
 interface UploadOptions {
   method?: string
   headers?: Record<string, string>

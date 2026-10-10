@@ -179,6 +179,10 @@ export const useGetDraftAppConfig = (app_id: string) => {
       const resp = await getDraftAppConfig(app_id)
       const data = resp.data
 
+      // Guard against an empty/null payload so a failed load never leaves the
+      // form half-populated (and never lets an empty prompt overwrite saved data).
+      if (!data) return
+
       // Synchronize the data to the form
       Object.assign(draftAppConfigForm, {
         preset_prompt: data.preset_prompt,
@@ -336,10 +340,11 @@ export const useDebugChat = () => {
     app_id: string,
     query: string,
     onData: (event_response: Record<string, any>) => void,
+    regenerate_message_id?: string,
   ) => {
     try {
       loading.value = true
-      await debugChat(app_id, query, onData)
+      await debugChat(app_id, query, onData, regenerate_message_id)
     } finally {
       loading.value = false
     }

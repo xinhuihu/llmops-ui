@@ -31,6 +31,7 @@ const message_id = ref('')
 const task_id = ref('')
 const scroller = ref<any>(null)
 const scrollHeight = ref(0)
+const inputRef = ref<HTMLTextAreaElement | null>(null)
 
 const accountStore = useAccountStore()
 const { loading: deleteDebugConversationLoading, handleDeleteDebugConversation } =
@@ -64,42 +65,13 @@ const handleScroll = async (event: UIEvent) => {
   }
 }
 
-// Define the input box submission function
-const handleSubmit = async () => {
-  // Check whether the query has been entered; if not, terminate.
-  if (query.value.trim() === '') {
-    Message.warning('User query cannot be empty')
-    return
-  }
-
-  // Detect whether the previous query has ended. A new query cannot be initiated if it has not ended.
-  if (debugChatLoading.value) {
-    Message.warning('The previous question has not been finished. Please wait a moment.')
-    return
-  }
-
-  // Complete the pre-work for handling formal questions when conditions are met,
-  // including clearing suggested questions, deleting message IDs and task IDs.
-  suggested_questions.value = []
-  message_id.value = ''
-  task_id.value = ''
-
-  // Add basic human messages to the message list
-  messages.value.unshift({
-    id: '',
-    conversation_id: '',
-    query: query.value,
-    answer: '',
-    total_token_count: 0,
-    latency: 0,
-    agent_thoughts: [],
-    created_at: 0,
-  })
-
-  // Initialize inference process data and clear input data
+// Run the agent for a query and stream the result into the message at targetIndex.
+const runDebugChat = async (
+  humanQuery: string,
+  targetIndex: number,
+  regenerateMessageId?: string,
+) => {
   let position = 0
-  const humanQuery = query.value
-  query.value = ''
 
   // Call hooks to initiate the request
   await handleDebugChat(props.app?.id, humanQuery, (event_response) => {
@@ -107,14 +79,14 @@ const handleSubmit = async () => {
     const event = event_response?.event
     const data = event_response?.data
     const event_id = data?.id
-    let agent_thoughts = messages.value[0].agent_thoughts
+    let agent_thoughts = messages.value[targetIndex].agent_thoughts
 
     // Initial data detection and assignment
     if (message_id.value === '' && data?.message_id) {
       task_id.value = data?.task_id
       message_id.value = data?.message_id
-      messages.value[0].id = data?.message_id
-      messages.value[0].conversation_id = data?.conversation_id
+      messages.value[targetIndex].id = data?.message_id
+      messages.value[targetIndex].conversation_id = data?.conversation_id
     }
 
     // Process the obtained events in a loop and record events other than ping.
@@ -135,6 +107,7 @@ const handleSubmit = async () => {
             observation: data?.observation,
             tool: data?.tool,
             tool_input: data?.tool_input,
+            retrieval_documents: data?.retrieval_documents || [],
             latency: data?.latency,
             created_at: 0,
           })
@@ -148,7 +121,7 @@ const handleSubmit = async () => {
         }
 
         // Update / add answer
-        messages.value[0].answer += data?.answer
+        messages.value[targetIndex].answer += data?.answer
       } else {
         // Handle other types of events and directly overwrite the data.
         position += 1
@@ -160,23 +133,80 @@ const handleSubmit = async () => {
           observation: data?.observation,
           tool: data?.tool,
           tool_input: data?.tool_input,
+          retrieval_documents: data?.retrieval_documents || [],
           latency: data?.latency,
           created_at: 0,
         })
       }
 
       // Update agent_thoughts
-      messages.value[0].agent_thoughts = agent_thoughts
+      messages.value[targetIndex].agent_thoughts = agent_thoughts
 
       scroller.value.scrollToBottom()
     }
-  })
+  }, regenerateMessageId)
 
   // Determine whether the suggested question generation is enabled. If enabled, initiate an API request to retrieve data.
   if (props.suggested_after_answer.enable) {
     await handleGenerateSuggestedQuestions(message_id.value)
     setTimeout(() => scroller.value && scroller.value.scrollToBottom(), 100)
   }
+}
+
+// Grow the textarea with its content, clamped to a max height so it stays scrollable.
+const autoResize = () => {
+  const el = inputRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+}
+
+// Enter sends the query; Shift+Enter inserts a newline. Guarded against IME
+// composition so confirming a Chinese input candidate does not send by accident.
+const handleKeydown = (e: KeyboardEvent) => {
+  if (e.isComposing) return
+  e.preventDefault()
+  handleSubmit()
+}
+
+// Define the input box submission function
+const handleSubmit = async () => {
+  // Check whether the query has been entered; if not, terminate.
+  if (query.value.trim() === '') {
+    Message.warning('User query cannot be empty')
+    return
+  }
+
+  // Detect whether the previous query has ended. A new query cannot be initiated if it has not ended.
+  if (debugChatLoading.value) {
+    Message.warning('The previous question has not been finished. Please wait a moment.')
+    return
+  }
+
+  // Complete the pre-work for handling formal questions when conditions are met,
+  // including clearing suggested questions, deleting message IDs and task IDs.
+  suggested_questions.value = []
+  message_id.value = ''
+  task_id.value = ''
+
+  const humanQuery = query.value
+  query.value = ''
+  nextTick(autoResize)
+
+  // Add basic human messages to the message list
+  messages.value.unshift({
+    id: '',
+    conversation_id: '',
+    query: humanQuery,
+    answer: '',
+    total_token_count: 0,
+    latency: 0,
+    agent_thoughts: [],
+    suggested_questions: [],
+    created_at: 0,
+  })
+
+  await runDebugChat(humanQuery, 0)
 }
 
 //Stop debug session function
@@ -194,6 +224,31 @@ const handleSubmitQuestion = async (question: string) => {
 
   // Trigger the handleSubmit function
   await handleSubmit()
+}
+
+// Regenerate an existing answer in place: clear it and re-run the agent into the same message.
+const handleRegenerate = async (item: Record<string, any>) => {
+  if (debugChatLoading.value) {
+    Message.warning('The previous question has not been finished. Please wait a moment.')
+    return
+  }
+
+  const idx = messages.value.findIndex((m) => m.id === item.id)
+  if (idx === -1) return
+
+  // Reset the shared generation state before re-running.
+  suggested_questions.value = []
+  message_id.value = ''
+  task_id.value = ''
+
+  // Clear the previous answer and reasoning trace so the new response replaces them.
+  messages.value[idx].answer = ''
+  messages.value[idx].agent_thoughts = []
+  messages.value[idx].suggested_questions = []
+  messages.value[idx].total_token_count = 0
+  messages.value[idx].latency = 0
+
+  await runDebugChat(item.query, idx, item.id)
 }
 
 
@@ -233,9 +288,10 @@ onMounted(async () => {
                 :agent_thoughts="item.agent_thoughts"
                 :answer="item.answer"
                 :app="props.app"
-                :suggested_questions="item.id === message_id ? suggested_questions : []"
+                :suggested_questions="item.suggested_questions?.length ? item.suggested_questions : (item.id === message_id ? suggested_questions : [])"
                 :loading="item.id === message_id && debugChatLoading"
                 @select-suggested-question="handleSubmitQuestion"
+                @regenerate="handleRegenerate(item)"
               />
             </div>
           </dynamic-scroller-item>
@@ -282,11 +338,11 @@ onMounted(async () => {
     <!-- 对话输入框 -->
     <div class="w-full flex flex-col flex-shrink-0">
       <!-- 顶部输入框 -->
-      <div class="px-6 flex items-center gap-4">
+      <div class="px-6 flex items-end gap-3">
         <!-- 清除按钮 -->
         <a-button
           :loading="deleteDebugConversationLoading"
-          class="flex-shrink-0 !text-gray-700"
+          class="flex-shrink-0 mb-1 !text-gray-700"
           type="text"
           shape="circle"
           @click="
@@ -306,14 +362,22 @@ onMounted(async () => {
         </a-button>
         <!-- 输入框组件 -->
         <div
-          class="h-[50px] flex items-center gap-2 px-4 flex-1 border border-gray-200 rounded-full"
+          class="flex-1 flex items-end gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl transition-colors focus-within:border-blue-400 focus-within:bg-white"
         >
-          <input v-model="query" type="text" class="flex-1 outline-0" @keyup.enter="handleSubmit" />
+          <textarea
+            ref="inputRef"
+            v-model="query"
+            rows="1"
+            placeholder="Enter a question. Enter to send, Shift+Enter for a newline"
+            class="flex-1 resize-none bg-transparent outline-none max-h-40 text-sm leading-6 text-gray-700 placeholder:text-gray-400"
+            @keydown.enter.exact="handleKeydown"
+            @input="autoResize"
+          ></textarea>
           <a-button
             :loading="debugChatLoading"
             type="text"
             shape="circle"
-            class="!text-gray-700"
+            class="flex-shrink-0 !text-gray-700"
             @click="handleSubmit"
           >
             <template #icon>

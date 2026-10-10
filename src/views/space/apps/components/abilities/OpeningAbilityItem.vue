@@ -7,6 +7,9 @@ const props = defineProps({
   app_id: { type: String, default: '', required: true },
   opening_statement: { type: String, default: '', required: true },
   opening_questions: { type: Array as PropType<string[]>, default: [], required: true },
+  // True while the draft config is still being fetched. Guarded so an early
+  // blur can't persist the (empty) default and wipe the saved value.
+  config_loading: { type: Boolean, default: false },
 })
 const emits = defineEmits(['update:opening_statement', 'update:opening_questions'])
 const { handleUpdateDraftAppConfig } = useUpdateDraftAppConfig()
@@ -27,8 +30,18 @@ const computed_opening_questions = computed({
 
 // Define the processor for the list of suggested opening questions for definition submission
 const handleUpdateOpeningQuestions = async () => {
+  if (props.config_loading) return
   await handleUpdateDraftAppConfig(props.app_id, {
     opening_questions: computed_opening_questions.value.filter((item) => item.trim() !== ''),
+  })
+}
+
+// Persist the opening statement on blur, but only once the draft config has
+// been loaded. Without this guard, an early blur saves the empty default.
+const handleBlur = async () => {
+  if (props.config_loading) return
+  await handleUpdateDraftAppConfig(props.app_id, {
+    opening_statement: props.opening_statement,
   })
 }
 </script>
@@ -54,13 +67,7 @@ const handleUpdateOpeningQuestions = async () => {
             placeholder="Fill in the opening messages of the AI application here"
             class="bg-white text-gray-700 rounded-lg border border-gray-200"
             :auto-size="{ minRows: 4, maxRows: 4 }"
-            @blur="
-              async () => {
-                await handleUpdateDraftAppConfig(props.app_id, {
-                  opening_statement: props.opening_statement,
-                })
-              }
-            "
+            @blur="handleBlur"
           />
         </div>
         <!-- 开场白建议问题 -->

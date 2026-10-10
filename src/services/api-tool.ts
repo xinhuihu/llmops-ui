@@ -19,7 +19,7 @@ export const getApiToolProvidersWithPage = (
   });
 };
 
-//Verification open-api schema data
+//Verification openapi-api schema data
 export const validateOpenAPISchema = (openapi_schema: string) => {
   return post<BaseResponse<any>>('/api-tools/validate-openapi-schema', {
     body: { openapi_schema },

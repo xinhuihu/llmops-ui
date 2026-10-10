@@ -47,7 +47,7 @@ onMounted(async () => {
           <a-avatar :size="32" class="bg-blue-700">
             <icon-common :size="18" />
           </a-avatar>
-          <div class="text-lg font-medium text-gray-900">Plugin Plaza</div>
+          <div class="text-lg font-medium text-gray-900">Tools</div>
         </div>
         <!-- Create button -->
         <a-button type="primary" class="rounded-lg">

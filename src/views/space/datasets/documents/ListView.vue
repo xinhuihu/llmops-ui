@@ -11,6 +11,7 @@ import {
 import UpdateDocumentNameModal from '@/views/space/datasets/documents/components/UpdateDocumentNameModal.vue'
 import HitTestingModal from '@/views/space/datasets/documents/components/HitTestingModal.vue'
 import AddDocumentModal from '@/views/space/datasets/documents/components/AddDocumentModal.vue'
+import PreviewDocumentDrawer from '@/views/space/datasets/documents/components/PreviewDocumentDrawer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +19,13 @@ const hitModalVisible = ref(false)
 const updateDocumentNameModalVisible = ref(false)
 const addDocumentModalVisible = ref(false)
 const updateDocumentID = ref('')
+const previewVisible = ref(false)
+const previewDocument = ref<Record<string, any> | null>(null)
+
+const openPreview = (record: Record<string, any>) => {
+  previewDocument.value = record
+  previewVisible.value = true
+}
 const { dataset, loadDataset } = useGetDataset(route.params?.dataset_id as string)
 const { loading, documents, paginator, loadDocuments } = useGetDocumentsWithPage(
   route.params?.dataset_id as string,
@@ -122,18 +130,10 @@ const { handleUpdate: handleUpdateEnabled } = useUpdateDocumentEnabled()
       >
         <template #columns>
           <a-table-column
-            title="#"
-            data-index="position"
-            align="center"
-            :width="80"
-            header-cell-class="rounded-tl-lg !bg-gray-200 text-gray-700"
-            cell-class="bg-transparent text-gray-700"
-          />
-          <a-table-column
             title="Name"
             data-index="name"
             :width="300"
-            header-cell-class="!bg-gray-200 text-gray-700"
+            header-cell-class="rounded-tl-lg !bg-gray-200 text-gray-700"
             cell-class="bg-transparent text-gray-700"
           >
             <template #cell="{ record }">
@@ -200,7 +200,7 @@ const { handleUpdate: handleUpdateEnabled } = useUpdateDocumentEnabled()
             data-index="operator"
             header-cell-class="rounded-tr-lg !bg-gray-200 text-gray-700"
             cell-class="bg-transparent text-gray-700 !h-[40px]"
-            :width="100"
+            :width="200"
           >
             <template #cell="{ record, rowIndex }">
               <a-space :size="0">
@@ -233,36 +233,53 @@ const { handleUpdate: handleUpdateEnabled } = useUpdateDocumentEnabled()
                     }
                   "
                 />
-                <a-dropdown position="br">
-                  <a-button type="text" size="mini" class="!text-gray-700">
+                <a-tooltip content="Preview">
+                  <a-button
+                    type="text"
+                    size="mini"
+                    class="!text-gray-700"
+                    @click="openPreview(record)"
+                  >
                     <template #icon>
-                      <icon-more />
+                      <icon-eye />
                     </template>
                   </a-button>
-                  <template #content>
-                    <a-doption
-                      @click="
-                        () => {
-                          updateDocumentNameModalVisible = true
-                          updateDocumentID = record.id
-                        }
-                      "
-                      >Rename
-                    </a-doption>
-                    <a-doption
-                      class="!text-red-700"
-                      @click="
-                        () =>
-                          handleDelete(route.params?.dataset_id as string, record.id, async () => {
-                            await loadDocuments()
-                            await loadDataset(route.params?.dataset_id as string)
-                          })
-                      "
-                    >
-                      Delete
-                    </a-doption>
-                  </template>
-                </a-dropdown>
+                </a-tooltip>
+                <a-tooltip content="Rename">
+                  <a-button
+                    type="text"
+                    size="mini"
+                    class="!text-gray-700"
+                    @click="
+                      () => {
+                        updateDocumentNameModalVisible = true
+                        updateDocumentID = record.id
+                      }
+                    "
+                  >
+                    <template #icon>
+                      <icon-edit />
+                    </template>
+                  </a-button>
+                </a-tooltip>
+                <a-tooltip content="Delete">
+                  <a-button
+                    type="text"
+                    size="mini"
+                    class="!text-red-700"
+                    @click="
+                      () =>
+                        handleDelete(route.params?.dataset_id as string, record.id, async () => {
+                          await loadDocuments()
+                          await loadDataset(route.params?.dataset_id as string)
+                        })
+                    "
+                  >
+                    <template #icon>
+                      <icon-delete />
+                    </template>
+                  </a-button>
+                </a-tooltip>
               </a-space>
             </template>
           </a-table-column>
@@ -291,6 +308,13 @@ const { handleUpdate: handleUpdateEnabled } = useUpdateDocumentEnabled()
           loadDataset(route.params?.dataset_id as string)
         }
       "
+    />
+    <!-- 文档在线预览抽屉 -->
+    <preview-document-drawer
+      v-if="previewDocument"
+      v-model:visible="previewVisible"
+      :dataset_id="route.params?.dataset_id as string"
+      :document="previewDocument"
     />
   </div>
 </template>

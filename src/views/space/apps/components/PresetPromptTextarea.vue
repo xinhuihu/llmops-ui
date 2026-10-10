@@ -10,6 +10,9 @@ import { useOptimizePrompt } from '@/hooks/use-ai'
 const props = defineProps({
   app_id: { type: String, required: true },
   preset_prompt: { type: String, default: '', required: true },
+  // True while the draft config is still being fetched. Guarded so an early
+  // blur can't persist the (empty) default and wipe the saved prompt.
+  config_loading: { type: Boolean, default: false },
 })
 const emits = defineEmits(['update:preset_prompt'])
 
@@ -58,6 +61,13 @@ const handleUndo = async () => {
   emits('update:preset_prompt', original_prompt.value)
   await handleUpdateDraftAppConfig(props.app_id, { preset_prompt: original_prompt.value })
   original_prompt.value = ''
+}
+
+// Persist the prompt on blur, but only once the draft config has been loaded.
+// Without this guard, an early blur saves the empty default and erases the prompt.
+const handleBlur = async () => {
+  if (props.config_loading) return
+  await handleUpdateDraftAppConfig(props.app_id, { preset_prompt: props.preset_prompt })
 }
 </script>
 
@@ -116,13 +126,7 @@ const handleUndo = async () => {
         :model-value="props.preset_prompt"
         :disabled="loading"
         @update:model-value="(value) => emits('update:preset_prompt', value)"
-        @blur="
-          async () => {
-            await handleUpdateDraftAppConfig(props.app_id, {
-              preset_prompt: props.preset_prompt,
-            })
-          }
-        "
+        @blur="handleBlur"
       />
       <div
         v-else

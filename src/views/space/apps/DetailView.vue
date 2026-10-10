@@ -11,9 +11,11 @@ const route = useRoute()
 const props = defineProps({
   app: { type: Object, default: {}, required: true },
 })
-const { draftAppConfigForm, loadDraftAppConfig } = useGetDraftAppConfig(
-  String(route.params?.app_id),
-)
+const {
+  loading: draftConfigLoading,
+  draftAppConfigForm,
+  loadDraftAppConfig,
+} = useGetDraftAppConfig(String(route.params?.app_id))
 const { handleUpdateDraftAppConfig } = useUpdateDraftAppConfig()
 </script>
 
@@ -34,12 +36,14 @@ const { handleUpdateDraftAppConfig } = useUpdateDraftAppConfig()
             <preset-prompt-textarea
               v-model:preset_prompt="draftAppConfigForm.preset_prompt"
               :app_id="String(route.params?.app_id)"
+              :config_loading="draftConfigLoading"
             />
           </div>
           <!-- 右侧应用能力 -->
           <agent-app-ability
             :draft_app_config="draftAppConfigForm"
             :app_id="String(route.params?.app_id)"
+            :config_loading="draftConfigLoading"
           />
         </div>
       </div>

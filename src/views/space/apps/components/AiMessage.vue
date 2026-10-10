@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { type PropType, computed } from 'vue'
+import { type PropType, computed, ref } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import DotFlashing from '@/components/DotFlashing.vue'
 import AgentThought from './AgentThought.vue'
+import { QueueEvent } from '@/config'
+import { Message } from '@arco-design/web-vue'
 
 const props = defineProps({
   app: { type: Object, default: {}, required: true },
@@ -12,7 +14,7 @@ const props = defineProps({
   agent_thoughts: { type: Array as PropType<Record<string, any>[]>, default: [], required: true },
   suggested_questions: { type: Array as PropType<string[]>, default: [], required: false },
 })
-const emits = defineEmits(['selectSuggestedQuestion'])
+const emits = defineEmits(['selectSuggestedQuestion', 'regenerate'])
 
 // Convert the streaming markdown answer into sanitized HTML for live preview.
 // `props.answer` grows incrementally as SSE chunks arrive, so this computed
@@ -23,6 +25,52 @@ const renderedAnswer = computed(() => {
   const html = marked.parse(raw, { async: false }) as string
   return DOMPurify.sanitize(html)
 })
+
+// Collect the documents cited by dataset-retrieval steps so they can be shown
+// below the answer. Dedupe by document_id, preserving first-seen order.
+const retrievalDocuments = computed(() => {
+  const seen = new Set<string>()
+  const docs: Record<string, any>[] = []
+  for (const thought of props.agent_thoughts) {
+    if (thought.event !== QueueEvent.datasetRetrieval) continue
+    const citations = thought.retrieval_documents
+    if (!Array.isArray(citations)) continue
+    for (const doc of citations) {
+      if (doc?.document_id && !seen.has(doc.document_id)) {
+        seen.add(doc.document_id)
+        docs.push(doc)
+      }
+    }
+  }
+  return docs
+})
+
+// Copy the raw Markdown answer to the clipboard.
+const handleCopy = async () => {
+  try {
+    await navigator.clipboard.writeText(props.answer)
+    Message.success('Copied')
+  } catch {
+    Message.error('Copy failed')
+  }
+}
+
+// Like / dislike feedback (visual toggle only for now; no backend endpoint yet).
+const liked = ref(false)
+const disliked = ref(false)
+
+const handleLike = () => {
+  liked.value = !liked.value
+  if (liked.value) disliked.value = false
+}
+
+const handleDislike = () => {
+  disliked.value = !disliked.value
+  if (disliked.value) liked.value = false
+}
+
+// Ask the parent to regenerate this answer.
+const handleRegenerate = () => emits('regenerate')
 </script>
 
 <template>
@@ -51,6 +99,42 @@ const renderedAnswer = computed(() => {
             class="inline-block w-2 h-4 ml-0.5 bg-gray-700 align-text-bottom animate-pulse"
           />
         </template>
+      </div>
+      <!-- 操作按钮行：喜欢 / 不喜欢 / 重新生成 / 复制 -->
+      <div v-if="props.answer.trim() !== ''" class="flex items-center gap-1">
+        <a-button
+          type="text"
+          size="mini"
+          :class="liked ? '!text-blue-500' : '!text-gray-500 hover:!text-gray-700'"
+          @click="handleLike"
+        >
+          <template #icon><icon-thumb-up :size="16" /></template>
+        </a-button>
+        <a-button
+          type="text"
+          size="mini"
+          :class="disliked ? '!text-red-500' : '!text-gray-500 hover:!text-gray-700'"
+          @click="handleDislike"
+        >
+          <template #icon><icon-thumb-down :size="16" /></template>
+        </a-button>
+        <a-button type="text" size="mini" class="!text-gray-500 hover:!text-gray-700" @click="handleRegenerate">
+          <template #icon><icon-refresh :size="16" /></template>
+        </a-button>
+        <a-button type="text" size="mini" class="!text-gray-500 hover:!text-gray-700" @click="handleCopy">
+          <template #icon><icon-copy :size="16" /></template>
+        </a-button>
+      </div>
+      <!-- 引用文档列表 -->
+      <div v-if="retrievalDocuments.length > 0" class="flex flex-wrap gap-2">
+        <div
+          v-for="doc in retrievalDocuments"
+          :key="doc.document_id"
+          class="flex items-center gap-1 px-2 py-1 border rounded-lg text-xs text-gray-600 bg-white"
+        >
+          <icon-file :size="12" />
+          {{ doc.document_name || doc.document_id }}
+        </div>
       </div>
       <!-- 建议问题列表 -->
       <div v-if="props.suggested_questions.length > 0" class="flex flex-col gap-2">
@@ -138,8 +222,9 @@ const renderedAnswer = computed(() => {
 .markdown-body :deep(pre) {
   margin: 0.5em 0;
   padding: 0.8em 1em;
-  background: #f7f7f8;
-  border: 1px solid #e5e7eb;
+  background: #1e1e1e;
+  color: #f8f8f8;
+  border: 1px solid #333333;
   border-radius: 8px;
   overflow-x: auto;
   line-height: 1.5;
@@ -148,6 +233,7 @@ const renderedAnswer = computed(() => {
   background: transparent;
   padding: 0;
   border-radius: 0;
+  color: #f8f8f8;
 }
 
 .markdown-body :deep(blockquote) {

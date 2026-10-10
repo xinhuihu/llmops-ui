@@ -98,9 +98,11 @@ export type GetDebugConversationMessagesWithPageResponse = BasePaginatorResponse
     observation: string
     tool: string
     tool_input: Record<string, any>
+    retrieval_documents: Record<string, any>[]
     latency: number
     created_at: number
   }[]
+  suggested_questions: string[]
   created_at: number
 }>
 

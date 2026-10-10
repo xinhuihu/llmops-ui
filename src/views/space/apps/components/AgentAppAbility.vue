@@ -9,6 +9,9 @@ import ToolsAbilityItem from './abilities/ToolsAbilityItem.vue'
 const props = defineProps({
   app_id: { type: String, default: '', required: true },
   draft_app_config: { type: Object, required: true },
+  // True while the draft config is still being fetched, forwarded to the
+  // ability items so their blur handlers skip saving during load.
+  config_loading: { type: Boolean, default: false },
 })
 const emits = defineEmits(['update:draft_app_config'])
 const defaultActivateKeys = [
@@ -50,6 +53,7 @@ const defaultActivateKeys = [
           v-model:opening_questions="draft_app_config.opening_questions"
           v-model:opening_statement="draft_app_config.opening_statement"
           :app_id="app_id"
+          :config_loading="config_loading"
         />
         <!-- 回答后生成建议问题 -->
         <suggested-after-answer-ability-item

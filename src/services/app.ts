@@ -49,11 +49,12 @@ export const debugChat = (
   app_id: string,
   query: string,
   onData: (event_response: { [key: string]: any }) => void,
+  regenerate_message_id?: string,
 ) => {
   return ssePost(
     `/apps/${app_id}/conversations`,
     {
-      body: { query },
+      body: { query, regenerate_message_id },
     },
     onData,
   )
