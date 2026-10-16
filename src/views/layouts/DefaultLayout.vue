@@ -48,12 +48,14 @@ onMounted(async () => {
             class="block h-9 w-[110px] mb-5 bg-gray-200 hover:bg-gray-300 transition-all rounded-lg"
           />
           <!-- Create AI app button -->
-          <a-button type="primary" block class="rounded-lg mb-4">
-            <template #icon>
-              <PlusOutlined />
-            </template>
-            Create Agent
-          </a-button>
+          <router-link :to="{ name: 'space-apps-list', query: { create_type: 'app' } }">
+            <a-button type="primary" block class="rounded-lg mb-4">
+              <template #icon>
+                <PlusOutlined />
+              </template>
+              Create Agent
+            </a-button>
+          </router-link>
           <!-- sidebar Nav -->
           <sidebar />
         </div>

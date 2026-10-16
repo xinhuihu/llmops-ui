@@ -4,6 +4,9 @@ import type {
   GetDraftAppConfigResponse,
   UpdateDraftAppConfigRequest,
   CreateAppRequest,
+  UpdateAppRequest,
+  GetAppsWithPageRequest,
+  GetAppsWithPageResponse,
   GetPublishHistoriesWithPageResponse,
   GetDebugConversationMessagesWithPageRequest,
   GetDebugConversationMessagesWithPageResponse
@@ -21,7 +24,27 @@ export const getApp = (app_id: string) => {
 
 // Create app in personal workspace
 export const createApp =(req: CreateAppRequest) =>{
-  return post<BaseResponse<{id:string}>>(`/apps`)
+  return post<BaseResponse<{id:string}>>(`/apps`, { body: req })
+}
+
+// update the specific agent
+export const updateApp = (app_id: string, req: UpdateAppRequest) => {
+  return post<BaseResponse<any>>(`/apps/${app_id}`, { body: req })
+}
+
+//Delete the specified agent
+export const deleteApp = (app_id: string) => {
+  return post<BaseResponse<any>>(`/apps/${app_id}/delete`)
+}
+
+// call the backend api to make a copy of builtin agent
+export const copyApp = (app_id: string) => {
+  return post<BaseResponse<{ id: string }>>(`/apps/${app_id}/copy`)
+}
+
+// call the backend api to get paginated list data of agent
+export const getAppsWithPage = (req: GetAppsWithPageRequest) => {
+  return get<GetAppsWithPageResponse>(`/apps`, { params: req })
 }
 
 //Get the draft configuration of a specific agent

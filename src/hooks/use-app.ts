@@ -13,38 +13,42 @@ import {
   updateDebugConversationSummary,
   deleteDebugConversation,
   stopDebugChat,
+  getAppsWithPage,
+  createApp,
+  updateApp,
+  copyApp,
+  deleteApp
 } from '@/services/app'
 import type {
   UpdateDraftAppConfigRequest,
   GetDebugConversationMessagesWithPageResponse,
+  GetAppsWithPageResponse,
+  CreateAppRequest,
+  UpdateAppRequest
 } from '@/models/app'
 import { Message, Modal } from '@arco-design/web-vue'
+import { useRoute, useRouter } from 'vue-router'
 
 //Get the agent configuration information
-export const useGetApp = (app_id: string) => {
+export const useGetApp = () => {
   // 1.Define the basic data required for hooks
   const loading = ref(false)
-  const app = reactive<Record<string, any>>({})
+  const app = ref<Record<string, any>>({})
 
   // 2.Define the functions required to load data
   const loadApp = async (app_id: string) => {
     try {
       loading.value = true
       const resp = await getApp(app_id)
-      const data = resp.data
+      app.value = resp.data
 
-      Object.assign(app, { ...data })
     } finally {
       loading.value = false
     }
   }
-
-  // 3.Load data once when the page DOM finishes loading
-  onMounted(async () => await loadApp(app_id))
-
   return { loading, app, loadApp }
 }
-//Publish the agent after debugging succesfully
+//Publish the agent after debugging successfully
 export const usePublish = () => {
   // 1.Define the data required for hooks
   const loading = ref(false)
@@ -368,4 +372,146 @@ export const useStopDebugChat = () => {
   }
 
   return { loading, handleStopDebugChat }
+}
+
+export const useGetAppsWithPage = () => {
+  //  define the required data for hooks
+  const route = useRoute()
+  const loading = ref(false)
+  const apps = ref<GetAppsWithPageResponse['data']['list']>([])
+  const defaultPaginator = {
+    current_page: 1,
+    page_size: 20,
+    total_page: 0,
+    total_record: 0,
+  }
+  const paginator = ref({ ...defaultPaginator })
+
+  // 2.define loading function
+  const loadApps = async (init: boolean = false) => {
+    // 2.1 Determine whether it needs to initialize, if so, init the paginator firstly
+    if (init) {
+      paginator.value = defaultPaginator
+    } else if (paginator.value.current_page > paginator.value.total_page) {
+      return
+    }
+
+    // 2.2 Loading the data and update
+    try {
+      // 2.3 Change the value of loading to true and call the api interface to get the data
+      loading.value = true
+      const resp = await getAppsWithPage({
+        current_page: paginator.value.current_page,
+        page_size: paginator.value.page_size,
+        search_word: String(route.query?.search_word ?? ''),
+      })
+      const data = resp.data
+
+      // 2.4  update the paginator
+      paginator.value = data.paginator
+
+      // 2.5 Determine whether there are more data
+      if (paginator.value.current_page <= paginator.value.total_page) {
+        paginator.value.current_page += 1
+      }
+
+      // 2.6 Append or overwrite the data
+      if (init) {
+        apps.value = data.list
+      } else {
+        apps.value.push(...data.list)
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, apps, paginator, loadApps }
+}
+
+export const useCreateApp = () => {
+  // 1. define the required data for hooks
+  const router = useRouter()
+  const loading = ref(false)
+
+  // 2. Define the handler of creating new App
+  const handleCreateApp = async (req: CreateAppRequest) => {
+    try {
+      loading.value = true
+      const resp = await createApp(req)
+      Message.success('Add the new Agent successfully')
+      await router.push({
+        name: 'space-apps-detail',
+        params: { app_id: resp.data.id },
+      })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, handleCreateApp }
+}
+
+export const useUpdateApp = () => {
+  // 1.define the required data for hooks
+  const loading = ref(false)
+
+  // 2.Define the handler of update Agent
+  const handleUpdateApp = async (app_id: string, req: UpdateAppRequest) => {
+    try {
+      loading.value = true
+      const resp = await updateApp(app_id, req)
+      Message.success(resp.message)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, handleUpdateApp }
+}
+
+export const useCopyApp = () => {
+  // 1.define the required data for hooks
+  const router = useRouter()
+  const loading = ref(false)
+
+  // 2.Define the handler for make a copy of builtin agent
+  const handleCopyApp = async (app_id: string) => {
+    try {
+      // 2.1 Modify the value of loading and send the request
+      loading.value = true
+      const resp = await copyApp(app_id)
+
+      // 2.2 Pop the Modal windows that show the successful modification agent
+      Message.success('Make a copy of builtin agent successfully')
+      await router.push({ name: 'space-apps-detail', params: { app_id: resp.data.id } })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, handleCopyApp }
+}
+
+export const useDeleteApp = () => {
+  const handleDeleteApp = async (app_id: string, callback?: () => void) => {
+    Modal.warning({
+      title: 'Do you want to delete the agent?',
+      content:
+        'After deleting the application, the published WebApp, open APIs and associated social media platforms will no longer be able to use this Agent application. If you need to suspend the application, you can use the unpublish function.',
+      hideCancel: false,
+      onOk: async () => {
+        try {
+          // 1.Send api request to backend after clicking the ok button
+          const resp = await deleteApp(app_id)
+          Message.success(resp.message)
+        } finally {
+          // 2.call the callback function to execute the callback function
+          callback && callback()
+        }
+      },
+    })
+  }
+
+  return { handleDeleteApp }
 }

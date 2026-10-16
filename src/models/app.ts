@@ -23,6 +23,33 @@ export type CreateAppRequest ={
   description: string
 }
 
+// Request structure for updating agent
+export type UpdateAppRequest = {
+  name: string;
+  icon: string;
+  description: string
+}
+
+//Get the paginator list the data of agents
+export type GetAppsWithPageRequest = BasePaginatorRequest & { search_word: string }
+
+// Response for collecting paginated list data of applications
+export type GetAppsWithPageResponse = BasePaginatorResponse<{
+  id: string
+  name: string
+  icon: string
+  description: string
+  preset_prompt: string
+  model_config: {
+    provider: string
+    model: string
+  }
+  status: string
+  updated_at: number
+  created_at: number
+}>
+
+
 //Response structure for getting specific app draft configuration
 export type GetDraftAppConfigResponse = BaseResponse<{
   id: string

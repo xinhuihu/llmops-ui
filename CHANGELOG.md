@@ -5,7 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-10-16
+
+### Added
+
+- App CRUD UI: create/update modal, paginated list with search, and copy/delete
+  actions.
+- Builtin app store: list categories and builtin agents, and add a builtin agent
+  to the workspace.
+- Sidebar "Create Agent" shortcut that opens the create modal.
+
+### Changed
+
+- Agent page navigation bar restyled to match the tools page.
+
+### Fixed
+
+- Unified the two card sizes on the app page.
+- Fixed the agent page search box filtering.
 
 ## [0.4.0] - 2026-10-10
 

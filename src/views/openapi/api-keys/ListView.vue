@@ -82,6 +82,7 @@ watch(
       }"
       :loading="getApiKeysWithPageLoading"
       :bordered="{ wrapper: false }"
+      table-layout-fixed
       :data="api_keys"
       @page-change="
         (page: number) => {
@@ -96,7 +97,6 @@ watch(
         <a-table-column
           title="api_key"
           data-index="api_key"
-          :width="400"
           header-cell-class="rounded-tl-lg !bg-gray-200 text-gray-700"
           cell-class="bg-transparent text-gray-700"
         >
@@ -118,6 +118,7 @@ watch(
         <a-table-column
           title="Status"
           data-index="is_active"
+          :width="120"
           header-cell-class="!bg-gray-200 text-gray-700"
           cell-class="bg-transparent text-gray-700"
         >
@@ -136,6 +137,7 @@ watch(
         <a-table-column
           title="Creation_At"
           data-index="created_at"
+          :width="180"
           header-cell-class="!bg-gray-200 text-gray-700"
           cell-class="bg-transparent text-gray-700"
         >
@@ -145,7 +147,6 @@ watch(
         </a-table-column>
         <a-table-column
           title="Description"
-          :width="400"
           data-index="remark"
           header-cell-class="!bg-gray-200 text-gray-700"
           cell-class="bg-transparent text-gray-700"
@@ -159,7 +160,7 @@ watch(
           data-index="operator"
           header-cell-class="rounded-tr-lg !bg-gray-200 text-gray-700"
           cell-class="bg-transparent text-gray-700 !h-[40px]"
-          :width="100"
+          :width="160"
         >
           <template #cell="{ record, rowIndex }">
             <a-space :size="0">

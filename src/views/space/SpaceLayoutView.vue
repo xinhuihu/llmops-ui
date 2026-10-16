@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
-const createType = ref<string>('')
+const createType = ref<string>(String(route.query?.create_type ?? ''))
 const searchWord = ref(route.query?.search_word || '')
 
 // Bind event of search input box
@@ -20,6 +20,11 @@ const search = (value: string) => {
 // Update createType value
 const updateCreateType = (value: string) => {
   createType.value = value
+  // Remove the one-shot ?create_type= query param once consumed, so clicking the
+  // sidebar "Create Agent" again re-triggers instead of being a same-URL no-op.
+  if (value === '' && route.query?.create_type) {
+    router.replace({ query: { ...route.query, create_type: undefined } })
+  }
 }
 
 // monitor changes of search_word
@@ -27,6 +32,14 @@ watch(
   () => route.query?.search_word,
   () => {
     searchWord.value = route.query?.search_word || ''
+  },
+)
+
+// monitor changes of create_type (set by the sidebar "Create Agent" button)
+watch(
+  () => route.query?.create_type,
+  (value) => {
+    createType.value = String(value ?? '')
   },
 )
 </script>
@@ -49,6 +62,7 @@ watch(
           v-if="route.path.startsWith('/space/apps')"
           type="primary"
           class="rounded-lg"
+          @click="createType = 'app'"
         >
           Create Agent
         </a-button>

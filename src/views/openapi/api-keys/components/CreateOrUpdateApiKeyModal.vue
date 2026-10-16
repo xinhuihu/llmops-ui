@@ -81,7 +81,7 @@ watch(
   >
     <!-- 顶部标题 -->
     <div class="flex items-center justify-between">
-      <div class="text-lg font-bold text-gray-700">{{ api_key_id ? 'Update' : 'New' }}Api Key</div>
+      <div class="text-lg font-bold text-gray-700">{{ api_key_id ? 'Update' : 'New' }} Api Key</div>
       <a-button
         type="text"
         class="!text-gray-700"
